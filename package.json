@@ -8,7 +8,7 @@
     "lint:fix": "next lint --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start"
   },
   "dependencies": {
