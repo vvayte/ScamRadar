@@ -1,0 +1,25 @@
+{
+  "users": {
+    "davidklichev@mail.ru": {
+      "email": "davidklichev@mail.ru",
+      "premium": false,
+      "credits": 0,
+      "count": 0,
+      "history": [],
+      "watchlist": [],
+      "createdAt": "2026-04-23T18:56:53.146Z",
+      "updatedAt": "2026-04-23T18:57:00.134Z"
+    },
+    "davidklichev@gmail.com": {
+      "email": "davidklichev@gmail.com",
+      "premium": false,
+      "credits": 0,
+      "count": 0,
+      "history": [],
+      "watchlist": [],
+      "createdAt": "2026-04-24T21:22:58.961Z",
+      "updatedAt": "2026-04-24T21:23:17.409Z"
+    }
+  },
+  "reports": []
+}

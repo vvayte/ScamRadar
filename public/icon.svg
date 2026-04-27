@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="ScamRadar">
+  <title>ScamRadar</title>
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#0e2a44"/>
+      <stop offset="55%" stop-color="#061421"/>
+      <stop offset="100%" stop-color="#03080e"/>
+    </radialGradient>
+    <linearGradient id="sweepGrad" x1="0%" y1="50%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.85"/>
+      <stop offset="55%" stop-color="#22d3ee" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="centerPulse" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="35%" stop-color="#7dd3fc" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blipGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fecaca" stop-opacity="1"/>
+      <stop offset="40%" stop-color="#f87171" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#f87171" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bgGrad)"/>
+  <rect x="1" y="1" width="510" height="510" rx="111" ry="111" fill="none" stroke="#22d3ee" stroke-opacity="0.22" stroke-width="1.5"/>
+
+  <g transform="translate(256 256)">
+    <circle r="200" fill="none" stroke="#22d3ee" stroke-opacity="0.10" stroke-width="1.5"/>
+    <circle r="160" fill="none" stroke="#22d3ee" stroke-opacity="0.18" stroke-width="2"/>
+    <circle r="110" fill="none" stroke="#22d3ee" stroke-opacity="0.28" stroke-width="2"/>
+    <circle r="62"  fill="none" stroke="#22d3ee" stroke-opacity="0.42" stroke-width="2"/>
+    <circle r="26"  fill="none" stroke="#22d3ee" stroke-opacity="0.55" stroke-width="2"/>
+
+    <line x1="-200" y1="0" x2="200" y2="0" stroke="#22d3ee" stroke-opacity="0.20" stroke-width="1.5"/>
+    <line x1="0" y1="-200" x2="0" y2="200" stroke="#22d3ee" stroke-opacity="0.20" stroke-width="1.5"/>
+
+    <line x1="-141" y1="-141" x2="141" y2="141" stroke="#22d3ee" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="-141" y1="141"  x2="141" y2="-141" stroke="#22d3ee" stroke-opacity="0.10" stroke-width="1"/>
+
+    <path d="M 0 0 L 200 0 A 200 200 0 0 0 51.76 -193.18 Z" fill="url(#sweepGrad)"/>
+
+    <line x1="0" y1="0" x2="200" y2="0" stroke="#67e8f9" stroke-width="2.5" stroke-opacity="0.95" stroke-linecap="round"/>
+
+    <circle cx="118" cy="-68" r="32" fill="url(#blipGrad)"/>
+    <circle cx="118" cy="-68" r="7" fill="#fecaca"/>
+    <circle cx="118" cy="-68" r="3" fill="#ffffff"/>
+
+    <circle r="48" fill="url(#centerPulse)" opacity="0.9"/>
+    <circle r="9" fill="#67e8f9"/>
+    <circle r="4" fill="#ffffff"/>
+  </g>
+</svg>
