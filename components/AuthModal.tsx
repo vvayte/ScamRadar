@@ -15,8 +15,11 @@ export default function AuthModal({ show, onClose, onSuccess }: AuthModalProps) 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationPending, setVerificationPending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   if (!show) return null;
 
@@ -24,9 +27,18 @@ export default function AuthModal({ show, onClose, onSuccess }: AuthModalProps) 
     e.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
     try {
       const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-      const body = mode === "login" ? { email, password } : { email, password, name };
+      const body =
+        mode === "login"
+          ? { email, password }
+          : {
+              email,
+              password,
+              name,
+              code: verificationPending ? verificationCode : undefined,
+            };
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,6 +47,18 @@ export default function AuthModal({ show, onClose, onSuccess }: AuthModalProps) 
       const data = await res.json();
       if (!res.ok) {
         setError(data?.error || "Something went wrong.");
+        if (data?.requiresVerification) setVerificationPending(true);
+        return;
+      }
+      if (data?.requiresVerification) {
+        setVerificationPending(true);
+        setNotice(
+          data?.delivered
+            ? "Verification code sent. Check your email."
+            : data?.devCode
+              ? `Dev code: ${data.devCode}`
+              : "Verification code requested."
+        );
         return;
       }
       onSuccess(data.user);
@@ -87,7 +111,12 @@ export default function AuthModal({ show, onClose, onSuccess }: AuthModalProps) 
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setVerificationPending(false);
+                setVerificationCode("");
+                setNotice("");
+              }}
               placeholder="Email address"
               className="w-full rounded-xl border border-white/12 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-cyan-400/50"
             />
@@ -96,14 +125,36 @@ export default function AuthModal({ show, onClose, onSuccess }: AuthModalProps) 
               required
               minLength={8}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setVerificationPending(false);
+                setVerificationCode("");
+                setNotice("");
+              }}
               placeholder={mode === "register" ? "Password (min. 8 characters)" : "Password"}
               className="w-full rounded-xl border border-white/12 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-cyan-400/50"
             />
+            {mode === "register" && verificationPending ? (
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="6-digit email code"
+                className="w-full rounded-xl border border-white/12 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-cyan-400/50"
+              />
+            ) : null}
 
             {error && (
               <div className="rounded-xl border border-red-300/30 bg-red-500/15 px-4 py-2 text-sm text-red-200">
                 {error}
+              </div>
+            )}
+            {notice && (
+              <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100">
+                {notice}
               </div>
             )}
 
@@ -112,22 +163,42 @@ export default function AuthModal({ show, onClose, onSuccess }: AuthModalProps) 
               disabled={loading}
               className="w-full rounded-xl bg-cyan-500 py-3 text-sm font-black text-white transition hover:bg-cyan-400 disabled:opacity-60"
             >
-              {loading ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}
+              {loading
+                ? "Please wait..."
+                : mode === "login"
+                  ? "Sign in"
+                  : verificationPending
+                    ? "Verify code & create account"
+                    : "Create account"}
             </button>
+            {mode === "register" && verificationPending ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setVerificationPending(false);
+                  setVerificationCode("");
+                  setError("");
+                  setNotice("Request a fresh code by pressing Create account.");
+                }}
+                className="w-full rounded-xl border border-white/12 bg-white/[0.04] py-3 text-sm font-semibold text-white/75 transition hover:bg-white/[0.1]"
+              >
+                Request a new code
+              </button>
+            ) : null}
           </form>
 
           <div className="mt-4 text-center text-sm text-white/50">
             {mode === "login" ? (
               <>
                 No account?{" "}
-                <button onClick={() => { setMode("register"); setError(""); }} className="text-cyan-400 hover:text-cyan-300">
+                <button onClick={() => { setMode("register"); setError(""); setNotice(""); setVerificationPending(false); }} className="text-cyan-400 hover:text-cyan-300">
                   Register free
                 </button>
               </>
             ) : (
               <>
                 Have an account?{" "}
-                <button onClick={() => { setMode("login"); setError(""); }} className="text-cyan-400 hover:text-cyan-300">
+                <button onClick={() => { setMode("login"); setError(""); setNotice(""); setVerificationPending(false); }} className="text-cyan-400 hover:text-cyan-300">
                   Sign in
                 </button>
               </>

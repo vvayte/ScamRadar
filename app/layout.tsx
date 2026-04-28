@@ -14,6 +14,8 @@ const serifFont = Fraunces({ subsets: ["latin"], variable: "--font-serif", displ
 
 const fallbackSiteUrl = "https://scamradar.app";
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || fallbackSiteUrl;
+const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@scamradar.app";
+const securityEmail = process.env.NEXT_PUBLIC_SECURITY_EMAIL || "security@scamradar.app";
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "";
 const plausibleScriptSrc =
@@ -158,8 +160,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/50">Resources</div>
                   <ul className="mt-4 space-y-2 text-sm">
                     <li><Link href="/examples" className="text-white/75 hover:text-white">Scam patterns</Link></li>
-                    <li><a href="#how-it-works" className="text-white/75 hover:text-white">How it works</a></li>
-                    <li><a href="#trust" className="text-white/75 hover:text-white">Reviews</a></li>
+                    <li><Link href="/#how-it-works" className="text-white/75 hover:text-white">How it works</Link></li>
+                    <li><Link href="/reviews" className="text-white/75 hover:text-white">Reviews</Link></li>
                     <li><Link href="/bot" className="text-white/75 hover:text-white">Developer docs</Link></li>
                   </ul>
                 </div>
@@ -169,8 +171,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <ul className="mt-4 space-y-2 text-sm">
                     <li><Link href="/privacy" className="text-white/75 hover:text-white">Privacy</Link></li>
                     <li><Link href="/terms" className="text-white/75 hover:text-white">Terms</Link></li>
-                    <li><a href="mailto:hello@scamradar.app" className="text-white/75 hover:text-white">Contact</a></li>
-                    <li><a href="mailto:security@scamradar.app" className="text-white/75 hover:text-white">Security</a></li>
+                    <li><a href={`mailto:${supportEmail}`} className="text-white/75 hover:text-white">Contact: {supportEmail}</a></li>
+                    <li><a href={`mailto:${securityEmail}`} className="text-white/75 hover:text-white">Security: {securityEmail}</a></li>
                   </ul>
                 </div>
               </div>
