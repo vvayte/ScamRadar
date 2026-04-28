@@ -22,11 +22,13 @@
 ## Must do before ad traffic
 1. Set real production env values in deployment platform:
    - `NEXT_PUBLIC_APP_URL`
+   - `DATABASE_URL`
    - `OPENAI_API_KEY`
    - `STRIPE_SECRET_KEY`
    - `STRIPE_PRICE_ID_SINGLE`
-   - `STRIPE_PRICE_ID_PACK`
-   - `STRIPE_PRICE_ID_SUBSCRIPTION`
+   - `STRIPE_PRICE_ID_MONTHLY`
+   - `STRIPE_PRICE_ID_YEARLY`
+   - `STRIPE_PRICE_ID_FLASH`
 2. Set up Stripe production prices and verify checkout success/cancel URLs.
 3. Configure your custom domain + HTTPS and verify DNS propagation.
 4. Add your support email and company/contact details inside legal pages.

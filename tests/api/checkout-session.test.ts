@@ -25,8 +25,9 @@ describe('POST /api/checkout/session', () => {
       ...originalEnv,
       NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
       STRIPE_PRICE_ID_SINGLE: 'price_single',
-      STRIPE_PRICE_ID_PACK: 'price_pack',
-      STRIPE_PRICE_ID_SUBSCRIPTION: 'price_subscription',
+      STRIPE_PRICE_ID_MONTHLY: 'price_monthly',
+      STRIPE_PRICE_ID_YEARLY: 'price_yearly',
+      STRIPE_PRICE_ID_FLASH: 'price_flash',
     };
   });
 
@@ -43,13 +44,13 @@ describe('POST /api/checkout/session', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Invalid purchase type' });
   });
 
-  it('creates a subscription checkout session', async () => {
+  it('creates a monthly subscription checkout session', async () => {
     createSessionMock.mockResolvedValue({ url: 'https://checkout.stripe.test/session' });
 
     const request = new Request('http://localhost/api/checkout/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'subscription' }),
+      body: JSON.stringify({ type: 'monthly' }),
     });
 
     const response = await POST(request as any);
@@ -61,6 +62,8 @@ describe('POST /api/checkout/session', () => {
     expect(createSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'subscription',
+        line_items: [{ price: 'price_monthly', quantity: 1 }],
+        subscription_data: { trial_period_days: 3 },
         success_url:
           'http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',
         cancel_url: 'http://localhost:3000/cancel',
