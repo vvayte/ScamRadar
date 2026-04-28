@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Script from "next/script";
 import { Fraunces, JetBrains_Mono, Space_Grotesk, Sora } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import Analytics from "@/components/Analytics";
 import NewsletterForm from "@/components/NewsletterForm";
 import { RadarSweep } from "@/components/Icons";
@@ -179,6 +180,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </footer>
         </div>
+        <SpeedInsights />
       </body>
     </html>
   );
