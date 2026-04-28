@@ -683,245 +683,37 @@ export default function HomePage() {
         ) : null}
       </header>
 
-      {/* HERO + INPUT */}
-      <section id="checker" ref={inputSectionRef} className="mx-auto grid w-full max-w-7xl gap-10 px-4 pb-12 pt-10 md:px-6 md:pb-16 md:pt-14 lg:grid-cols-[1.2fr_0.9fr]">
-        <div>
-          <div className="fade-in-up inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 chip-glow">
-            <span className="pulse-danger h-2.5 w-2.5 rounded-full bg-cyan-400" />
-            Trusted by 38,000+ people across 47 countries
+      {/* HERO + INPUT (input now on the right) */}
+      <section
+        id="checker"
+        ref={inputSectionRef}
+        className="mx-auto grid w-full max-w-6xl gap-8 px-4 pb-10 pt-8 md:gap-10 md:px-6 md:pb-14 md:pt-12 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-14"
+      >
+        {/* LEFT — headline + value props */}
+        <div className="hero-left">
+          <div className="fade-in-up inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 chip-glow md:px-4 md:py-2 md:text-sm">
+            <span className="pulse-danger h-2 w-2 rounded-full bg-cyan-400" />
+            Trusted by 38,000+ across 47 countries
           </div>
 
-          <h1 className="font-serif-display fade-in-up mt-5 max-w-4xl text-4xl font-black leading-[0.95] md:text-7xl">
-            Catch a <span className="gradient-text">scam</span> in 2 seconds —
-            <br className="hidden md:block" /> before it costs you real money.
+          <h1 className="font-serif-display fade-in-up mt-5 text-4xl font-black leading-[1] md:mt-6 md:text-6xl lg:text-7xl">
+            Catch a <span className="gradient-text">scam</span>
+            <br />
+            in 2 seconds.
           </h1>
 
-          <p className="fade-in-up mt-5 max-w-3xl text-lg leading-8 soft-muted md:text-xl">
-            Paste a suspicious message, URL, or screenshot. ScamRadar blends rule-based signals, URL
-            inspection, image analysis, and AI to return a clear risk score with real next steps.
+          <p className="fade-in-up mt-4 max-w-md text-base leading-7 soft-muted md:mt-5 md:text-lg md:leading-8">
+            Paste a message, link, or screenshot. Get a clear risk score with the reasons — before it costs you real money.
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
-            <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-white/85">2 checks free — no signup</span>
-            <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-white/85">Text · link · screenshot</span>
-            <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-white/85">Community intel</span>
-            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">Avg. 1.8s response</span>
+          <div className="mt-5 flex flex-wrap gap-2 text-xs md:mt-6 md:text-sm">
+            <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-white/85">2 free checks</span>
+            <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-white/85">No signup</span>
+            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">~1.8s avg</span>
           </div>
 
-          <div className="fade-in-up mt-8 gradient-border p-4 md:p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-black">Run instant scam check</h2>
-                <p className="mt-1 text-sm text-white/55">Paste first. Pay second. Protect always.</p>
-              </div>
-              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-white/45">Current access</div>
-                <div className="mono-readout mt-1 text-sm font-semibold text-white">{checksLeft}</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-3 md:p-4">
-              <div className="relative">
-                <textarea
-                  ref={textareaRef}
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  onPaste={onTextareaPaste}
-                  aria-label="Suspicious message, URL, or pasted screenshot"
-                  maxLength={12000}
-                  placeholder="Paste suspicious message or listing URL. Tip: you can paste a screenshot directly with Ctrl+V."
-                  className="input-field h-56 w-full resize-none rounded-2xl border border-white/10 bg-[#06141d] px-5 py-4 text-base text-white outline-none transition placeholder:text-white/35 focus:border-cyan-300/50 focus-ring"
-                />
-                {loading ? <div className="scan-overlay rounded-2xl" /> : null}
-                <div className="absolute bottom-3 right-4 flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-2 py-1 text-[10px] text-white/55">
-                  <span>{text.length} / 12,000</span>
-                  <span className="hidden sm:inline mono-readout">⌘ + Enter</span>
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => cameraInputRef.current?.click()}
-                      className="touch-manipulation inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/18 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/28"
-                    >
-                      <CameraIcon size={16} />
-                      Take photo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => galleryInputRef.current?.click()}
-                      className="touch-manipulation inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.12]"
-                    >
-                      <UploadIcon size={16} />
-                      Upload photo
-                    </button>
-                  </div>
-                  <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={onImageChange} />
-                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onImageChange} />
-
-                  <div className="text-xs text-white/65">
-                    {imageFile ? (
-                      <span className="mono-readout">Selected: {imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(2)} MB)</span>
-                    ) : (
-                      "No image selected"
-                    )}
-                  </div>
-                </div>
-
-                {imagePreviewUrl ? (
-                  <div className="mt-3 overflow-hidden rounded-xl border border-white/15 bg-black/30">
-                    <Image src={imagePreviewUrl} alt="Listing preview" width={1200} height={900} unoptimized className="max-h-56 w-full object-cover" />
-                  </div>
-                ) : null}
-
-                {imageFile ? (
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={clearImageSelection}
-                      className="touch-manipulation min-h-10 rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/25"
-                    >
-                      Remove photo
-                    </button>
-                  </div>
-                ) : null}
-
-                <p className="mt-3 text-xs text-white/50">
-                  Supports JPG/PNG/WEBP up to 8MB. Best for listing screenshots, seller chats, and payment instructions.
-                </p>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <button
-                  onClick={handleCheck}
-                  disabled={loading}
-                  className="primary-cta press touch-manipulation flex-1 inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-black text-white transition disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading ? (
-                    <span className="inline-flex items-center gap-2">
-                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Analyzing...
-                    </span>
-                  ) : (
-                    <>
-                      <BoltIcon size={18} />
-                      Analyze risk
-                    </>
-                  )}
-                </button>
-                <Link
-                  href="/pricing"
-                  className="touch-manipulation inline-flex min-h-14 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.04] px-6 py-4 text-base font-semibold text-white/95 transition hover:bg-white/[0.1]"
-                >
-                  View Plans
-                </Link>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/50">
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">SMS / DM</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">Marketplace chat</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">Email body</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">Suspicious links</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">Listing screenshots</span>
-              </div>
-            </div>
-
-            {watchlistAlert ? (
-              <div className="mt-4 rounded-2xl border border-amber-300/35 bg-amber-500/15 px-4 py-3 text-sm text-amber-100">{watchlistAlert}</div>
-            ) : null}
-
-            {error ? (
-              <div className="mt-4 rounded-2xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100">{error}</div>
-            ) : null}
-
-            {loading && !result ? (
-              <div className="mt-6 space-y-3" aria-live="polite" aria-label="Analyzing">
-                <div className="skeleton h-8 w-2/3" />
-                <div className="skeleton h-4 w-full" />
-                <div className="skeleton h-4 w-5/6" />
-              </div>
-            ) : null}
-
-            {result ? <ResultCard result={result} partial={isPartial} /> : null}
-
-            {result ? (
-              <>
-                <ForensicReport result={result} input={lastAnalysisInput} partial={isPartial} />
-                <FollowUpChat input={lastAnalysisInput} result={result} locked={isPartial} />
-              </>
-            ) : null}
-
-            {result && latestHistoryItem ? (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={shareReport} className="rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.12]">
-                      Share report
-                    </button>
-                    <button onClick={exportReport} className="rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.12]">
-                      Export .txt
-                    </button>
-                    <button onClick={() => setShowReportForm((prev) => !prev)} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
-                      Report scammer
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-white/70">
-                    <span>Was this correct?</span>
-                    <button
-                      onClick={() => setFeedbackGiven("correct")}
-                      className={`rounded-full border px-2.5 py-1 transition ${feedbackGiven === "correct" ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200" : "border-white/15 hover:bg-white/10"}`}
-                    >
-                      👍 Yes
-                    </button>
-                    <button
-                      onClick={() => setFeedbackGiven("wrong")}
-                      className={`rounded-full border px-2.5 py-1 transition ${feedbackGiven === "wrong" ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-200" : "border-white/15 hover:bg-white/10"}`}
-                    >
-                      👎 No
-                    </button>
-                  </div>
-                </div>
-
-                {feedbackGiven ? (
-                  <div className="mt-2 text-xs text-white/60">
-                    Thanks! Your feedback improves future detections.
-                  </div>
-                ) : null}
-
-                {shareStatus ? <div className="mt-2 text-xs text-white/70">{shareStatus}</div> : null}
-                {reportStatus ? <div className="mt-2 text-xs text-white/70">{reportStatus}</div> : null}
-
-                {showReportForm ? (
-                  <div className="mt-3 space-y-2">
-                    <input
-                      value={reportPlatform}
-                      onChange={(event) => setReportPlatform(event.target.value)}
-                      placeholder="Platform (optional): eBay / Facebook Marketplace / Avito"
-                      className="w-full rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
-                    />
-                    <textarea
-                      value={reportNotes}
-                      onChange={(event) => setReportNotes(event.target.value)}
-                      placeholder="Extra details (optional)"
-                      className="h-20 w-full resize-none rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
-                    />
-                    <button onClick={submitReport} className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-400">
-                      Submit report
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <aside className="space-y-4">
-          <HeroDemo />
-
-          <div className="fade-in-up grid grid-cols-3 gap-2 text-[11px]">
+          {/* Risk legend — desktop only here, balances height */}
+          <div className="mt-6 hidden max-w-sm grid-cols-3 gap-2 text-[11px] lg:grid">
             <div className="rounded-xl border border-rose-400/25 bg-rose-500/10 px-3 py-2.5">
               <div className="font-bold text-rose-200">High</div>
               <div className="mono-readout mt-0.5 text-rose-200/80">70–100</div>
@@ -935,350 +727,317 @@ export default function HomePage() {
               <div className="mono-readout mt-0.5 text-emerald-200/80">0–39</div>
             </div>
           </div>
+        </div>
 
-          <div className="fade-in-up rounded-2xl border border-white/10 bg-black/35 p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/55">What we inspect</div>
-              <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-200">
-                12 signals
-              </span>
+        {/* RIGHT — input panel */}
+        <div className="fade-in-up gradient-border p-3 md:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3 md:mb-4">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-white/45">Run instant check</div>
+              <h2 className="mt-0.5 text-base font-black md:text-lg">Paste. Analyze. Decide.</h2>
             </div>
-            <ul className="mt-4 grid gap-3 text-sm">
-              {[
-                { icon: <GlobeIcon size={16} className="text-cyan-300" />, title: "Domain & WHOIS lookup", desc: "Age, registrar, country, SSL chain" },
-                { icon: <AlertIcon size={16} className="text-rose-300" />, title: "Lookalike character analysis", desc: "Homoglyphs, digit-letter swaps, IDN" },
-                { icon: <ScanIcon size={16} className="text-amber-300" />, title: "Payment-flow patterns", desc: "Off-platform asks, wire/crypto pressure" },
-                { icon: <CameraIcon size={16} className="text-cyan-300" />, title: "Image OCR & reverse search", desc: "Stolen listing photos, fake screenshots" },
-                { icon: <ShieldIcon size={16} className="text-emerald-300" />, title: "Community intel", desc: "Cross-checked with 38k+ user reports" },
-              ].map((row) => (
-                <li key={row.title} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04]">
-                    {row.icon}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-white/90">{row.title}</div>
-                    <div className="text-xs text-white/55">{row.desc}</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="fade-in-up overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-500/10 via-black/40 to-black/60 p-5">
-            <div className="flex items-center gap-1 text-amber-300">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <StarIcon key={i} size={14} />
-              ))}
-              <span className="ml-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white/55">Verified buyer</span>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-white/85">
-              &ldquo;Was about to send €380 to a &lsquo;courier&rsquo; before I pasted the message here. Score 91, full
-              breakdown of why. Saved me a month&apos;s rent.&rdquo;
-            </p>
-            <div className="mt-3 flex items-center gap-3 border-t border-white/10 pt-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-xs font-black text-white">
-                MK
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-white">Marta K.</div>
-                <div className="text-[11px] text-white/50">Wallapop seller · Barcelona</div>
-              </div>
-              <div className="ml-auto rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">
-                €380 saved
-              </div>
+            <div className="shrink-0 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-1.5 text-right">
+              <div className="text-[9px] uppercase tracking-[0.2em] text-white/45">Access</div>
+              <div className="mono-readout text-[11px] font-semibold text-white">{checksLeft}</div>
             </div>
           </div>
-        </aside>
-      </section>
 
-      <div className="mx-auto w-full max-w-7xl px-4 md:px-6"><div className="section-divider" /></div>
-
-      {/* THREAT FEED — full-width strip */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6">
-        <ThreatFeed />
-      </section>
-
-      {/* WATCHLIST + ACCOUNT — pro tools */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="glass-panel rounded-3xl p-6">
-            <div className="text-xs uppercase tracking-[0.22em] text-white/45">Watchlist</div>
-            <p className="mt-2 text-xs text-white/65">Track risky domains or seller keywords and get instant matches.</p>
-            <div className="mt-3 flex gap-2">
-              <input
-                value={watchlistInput}
-                onChange={(event) => setWatchlistInput(event.target.value)}
-                placeholder="domain.com or seller name"
-                className="flex-1 rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+            <div className="relative">
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                onPaste={onTextareaPaste}
+                aria-label="Suspicious message, URL, or pasted screenshot"
+                maxLength={12000}
+                placeholder="Paste a suspicious message or URL here. Tip: Ctrl+V also pastes screenshots."
+                className="input-field h-44 w-full resize-none rounded-xl border border-white/10 bg-[#06141d] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-cyan-300/50 focus-ring md:h-48 md:text-base"
               />
-              <button onClick={addWatchlistEntry} className="rounded-lg border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.12]">
-                Add
-              </button>
-            </div>
-            <div className="mt-3 space-y-2">
-              {watchlist.length === 0 ? (
-                <div className="text-xs text-white/50">No watchlist entries yet.</div>
-              ) : (
-                watchlist.slice(0, 8).map((item) => (
-                  <div key={item} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-xs">
-                    <span className="mono-readout text-white/80">{item}</span>
-                    <button onClick={() => removeWatchlistEntry(item)} className="text-cyan-200 transition hover:text-cyan-100">
-                      remove
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-3xl p-6">
-            <div className="text-xs uppercase tracking-[0.22em] text-white/45">Sync across devices</div>
-            <p className="mt-2 text-xs text-white/65">Sign in to sync credits, history, and watchlist. Use magic link or email + password.</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {dbUser ? (
-                <Link href="/account" className="rounded-xl bg-cyan-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-cyan-400">
-                  Open account
-                </Link>
-              ) : (
-                <button onClick={() => setShowAuthModal(true)} className="rounded-xl bg-cyan-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-cyan-400">
-                  Sign in / Register
-                </button>
-              )}
-              {authToken ? (
-                <button onClick={signOut} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-4 py-2.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
-                  Sign out (legacy)
-                </button>
-              ) : null}
-            </div>
-            {authStatus ? <div className="mt-3 text-xs text-white/55">{authStatus}</div> : null}
-          </div>
-        </div>
-      </section>
-
-      {/* TRUST STRIP */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6">
-        <TrustStrip />
-      </section>
-
-      {/* LIVE STATS */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <div className="mb-6 max-w-2xl">
-          <div className="text-xs uppercase tracking-[0.22em] text-white/50">Impact at a glance</div>
-          <h2 className="mt-2 text-3xl font-black md:text-4xl">Scam prevention, measured.</h2>
-        </div>
-        <LiveStats />
-      </section>
-
-      {/* SCAM EXAMPLES */}
-      <section id="examples" className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <ScamExamples onTry={tryExample} />
-      </section>
-
-      {/* SCAM TYPES */}
-      <section id="types" className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <ScamTypes />
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <div className="glass-panel rounded-[32px] p-6 md:p-8">
-          <div className="max-w-2xl">
-            <div className="text-xs uppercase tracking-[0.22em] text-white/45">How it works</div>
-            <h2 className="mt-3 text-3xl font-black md:text-4xl">Three steps between you and a scam</h2>
-            <p className="mt-3 soft-muted">
-              Designed for speed under stress. No account required to start. Paste, evaluate, and decide with better
-              confidence.
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {[
-              ["01", "Paste message / URL / image", "ScamRadar inspects text, links, and screenshots in one flow."],
-              ["02", "Get risk + reasons instantly", "You see priority risk signals and recommended next action."],
-              ["03", "Share, report, and monitor", "Export reports, report scammers, and track risky indicators."],
-            ].map(([num, title, body]) => (
-              <div key={num} className="hover-lift rounded-3xl border border-white/10 bg-black/30 p-6">
-                <div className="mono-readout mb-4 inline-flex rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-bold text-cyan-100">
-                  {num}
-                </div>
-                <h3 className="text-xl font-bold">{title}</h3>
-                <p className="mt-2 text-sm leading-7 text-white/70">{body}</p>
+              {loading ? <div className="scan-overlay rounded-xl" /> : null}
+              <div className="absolute bottom-2 right-3 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2 py-0.5 text-[10px] text-white/55">
+                <span>{text.length} / 12,000</span>
+                <span className="hidden sm:inline mono-readout">⌘+Enter</span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section id="trust" className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <Testimonials />
-      </section>
-
-      {/* WHY NOT CHATGPT */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <WhyNotChatGPT />
-      </section>
-
-      {/* COMPARISON TABLE */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <ComparisonTable />
-      </section>
-
-      {/* HISTORY */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6">
-        <div className="glass-panel rounded-[32px] p-6 md:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-[0.22em] text-white/45">History & Reports</div>
-              <h2 className="mt-2 text-2xl font-black md:text-3xl">Recent checks</h2>
             </div>
-            <button onClick={clearHistory} className="rounded-lg border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.12]">
-              Clear history
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5">
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="touch-manipulation inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/25"
+                >
+                  <CameraIcon size={13} />
+                  Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="touch-manipulation inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/[0.12]"
+                >
+                  <UploadIcon size={13} />
+                  Upload
+                </button>
+              </div>
+              <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={onImageChange} />
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onImageChange} />
+              <div className="text-[11px] text-white/55">
+                {imageFile ? (
+                  <span className="mono-readout">
+                    {imageFile.name.length > 18 ? imageFile.name.slice(0, 16) + "…" : imageFile.name}
+                    {" · "}{(imageFile.size / 1024 / 1024).toFixed(1)}MB
+                  </span>
+                ) : (
+                  "JPG / PNG / WEBP · 8 MB max"
+                )}
+              </div>
+            </div>
+
+            {imagePreviewUrl ? (
+              <div className="mt-2 overflow-hidden rounded-xl border border-white/15 bg-black/30">
+                <Image src={imagePreviewUrl} alt="Listing preview" width={1200} height={900} unoptimized className="max-h-40 w-full object-cover" />
+                <div className="flex justify-end p-2">
+                  <button
+                    type="button"
+                    onClick={clearImageSelection}
+                    className="touch-manipulation min-h-8 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-100 transition hover:bg-cyan-500/20"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <button
+              onClick={handleCheck}
+              disabled={loading}
+              className="primary-cta press touch-manipulation mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-60 md:text-base"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Analyzing...
+                </span>
+              ) : (
+                <>
+                  <BoltIcon size={16} />
+                  Analyze risk
+                </>
+              )}
             </button>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {history.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-sm text-white/55">
-                No checks yet. Your analysis history will appear here.
+          {watchlistAlert ? (
+            <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/15 px-3 py-2 text-xs text-amber-100">{watchlistAlert}</div>
+          ) : null}
+          {error ? (
+            <div className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs text-cyan-100">{error}</div>
+          ) : null}
+
+          {loading && !result ? (
+            <div className="mt-4 space-y-3" aria-live="polite" aria-label="Analyzing">
+              <div className="skeleton h-6 w-2/3" />
+              <div className="skeleton h-4 w-full" />
+              <div className="skeleton h-4 w-5/6" />
+            </div>
+          ) : null}
+
+          {result ? <ResultCard result={result} partial={isPartial} /> : null}
+
+          {result ? (
+            <>
+              <ForensicReport result={result} input={lastAnalysisInput} partial={isPartial} />
+              <FollowUpChat input={lastAnalysisInput} result={result} locked={isPartial} />
+            </>
+          ) : null}
+
+          {result && latestHistoryItem ? (
+            <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={shareReport} className="rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/[0.12]">
+                    Share
+                  </button>
+                  <button onClick={exportReport} className="rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/[0.12]">
+                    Export
+                  </button>
+                  <button onClick={() => setShowReportForm((prev) => !prev)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
+                    Report
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-white/65">
+                  <span>Correct?</span>
+                  <button
+                    onClick={() => setFeedbackGiven("correct")}
+                    className={`rounded-full border px-2 py-0.5 transition ${feedbackGiven === "correct" ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200" : "border-white/15 hover:bg-white/10"}`}
+                    aria-label="Mark feedback as correct"
+                  >
+                    👍
+                  </button>
+                  <button
+                    onClick={() => setFeedbackGiven("wrong")}
+                    className={`rounded-full border px-2 py-0.5 transition ${feedbackGiven === "wrong" ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-200" : "border-white/15 hover:bg-white/10"}`}
+                    aria-label="Mark feedback as wrong"
+                  >
+                    👎
+                  </button>
+                </div>
               </div>
-            ) : (
-              history.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => applyHistoryItem(item)}
-                  className="text-left rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:bg-white/[0.06]"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="mono-readout text-xs text-white/50">{new Date(item.createdAt).toLocaleString()}</div>
-                    <div className={`rounded-full px-2 py-1 text-[10px] font-bold ${
-                      String(item.result.level).toLowerCase().includes("high")
-                        ? "bg-cyan-500/20 text-cyan-200"
-                        : String(item.result.level).toLowerCase().includes("medium")
-                          ? "bg-amber-500/20 text-amber-200"
-                          : "bg-emerald-500/20 text-emerald-200"
-                    }`}>
-                      {item.result.level}
-                    </div>
-                  </div>
-                  <div className="mt-2 line-clamp-2 text-sm text-white/80">{item.input}</div>
-                  <div className="mt-2 text-xs text-white/55">
-                    Score {item.result.score} • {item.hasImage ? "With image" : "Text/URL"}
-                  </div>
-                </button>
-              ))
-            )}
+
+              {feedbackGiven ? (
+                <div className="mt-2 text-[11px] text-white/55">Thanks — feedback improves future detections.</div>
+              ) : null}
+              {shareStatus ? <div className="mt-1.5 text-[11px] text-white/65">{shareStatus}</div> : null}
+              {reportStatus ? <div className="mt-1.5 text-[11px] text-white/65">{reportStatus}</div> : null}
+
+              {showReportForm ? (
+                <div className="mt-2.5 space-y-2">
+                  <input
+                    value={reportPlatform}
+                    onChange={(event) => setReportPlatform(event.target.value)}
+                    placeholder="Platform (optional): eBay / Facebook Marketplace / Avito"
+                    className="w-full rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-xs text-white outline-none placeholder:text-white/40"
+                  />
+                  <textarea
+                    value={reportNotes}
+                    onChange={(event) => setReportNotes(event.target.value)}
+                    placeholder="Extra details (optional)"
+                    className="h-16 w-full resize-none rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-xs text-white outline-none placeholder:text-white/40"
+                  />
+                  <button onClick={submitReport} className="rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-cyan-400">
+                    Submit report
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Risk legend — mobile/tablet only here */}
+          <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] lg:hidden">
+            <div className="rounded-lg border border-rose-400/25 bg-rose-500/10 px-2 py-1.5 text-center">
+              <div className="font-bold text-rose-200">High</div>
+              <div className="mono-readout mt-0.5 text-rose-200/80">70–100</div>
+            </div>
+            <div className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-2 py-1.5 text-center">
+              <div className="font-bold text-amber-200">Medium</div>
+              <div className="mono-readout mt-0.5 text-amber-200/80">40–69</div>
+            </div>
+            <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1.5 text-center">
+              <div className="font-bold text-emerald-200">Low</div>
+              <div className="mono-readout mt-0.5 text-emerald-200/80">0–39</div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-6 md:pb-14">
-        <div className="glass-panel rounded-[32px] p-6 md:p-8">
-          <div className="text-xs uppercase tracking-[0.22em] text-white/45">Frequently asked</div>
-          <h2 className="mt-2 text-3xl font-black md:text-4xl">Common questions</h2>
+      <div className="mx-auto w-full max-w-6xl px-4 md:px-6"><div className="section-divider" /></div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+      {/* LIVE DEMO — moved here from hero aside */}
+      <section id="demo" className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 md:px-6 md:pb-14">
+        <div className="mb-5 max-w-2xl md:mb-7">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-white/45 md:text-xs">Watch it work</div>
+          <h2 className="mt-2 text-2xl font-black md:text-3xl">A real scam, broken down in under 2 seconds.</h2>
+        </div>
+        <HeroDemo />
+      </section>
+
+      {/* THREAT FEED — atmospheric strip */}
+      <section className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-12">
+        <ThreatFeed />
+      </section>
+
+      {/* SCAM EXAMPLES — try a sample */}
+      <section id="examples" className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <ScamExamples onTry={tryExample} />
+      </section>
+
+      {/* HOW IT WORKS — compact 3-step */}
+      <section id="how-it-works" className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <div className="glass-panel rounded-3xl p-5 md:p-8">
+          <div className="max-w-2xl">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/45 md:text-xs">How it works</div>
+            <h2 className="mt-2 text-2xl font-black md:text-3xl">Three steps. Two seconds.</h2>
+          </div>
+          <div className="mt-6 grid gap-3 md:mt-7 md:grid-cols-3 md:gap-4">
             {[
-              ["How accurate is the score?", "Scores combine rule-based signals, URL/marketplace extraction, image analysis, and AI interpretation. Treat high-risk results as a strong warning and verify independently. Our false-positive rate on human-reviewed cases sits under 4%."],
-              ["Can I check screenshots from mobile?", "Yes. Upload from gallery or capture from camera on iOS and Android directly in the app — no install required."],
-              ["How does watchlist monitoring work?", "Add risky domains or seller keywords to your watchlist. ScamRadar alerts you instantly when your new analysis matches tracked items."],
-              ["Do you have bot integration?", "Yes — use the Bot API endpoint for Telegram/WhatsApp bots, or share checks via quick links. Details on the Bot API page."],
-              ["Is my data private?", "We do not sell or share analysis data. Local storage keeps things on your device by default; cloud sync is opt-in via magic link."],
-              ["What happens after my free check?", "You can unlock more with a single $0.99 pass, Shield Monthly ($4.99/mo with 3-day free trial), or Shield Yearly ($29.99/yr — 50% off). All plans are cancel-anytime."],
-              ["What languages do you support?", "Analysis works across English, Russian, Spanish, German, Portuguese, and more. The UI is currently English; localized UI is on our Q3 roadmap."],
-              ["Can I integrate ScamRadar into my app?", "Absolutely. Our Bot API accepts a payload and returns a risk score. Rate limits apply per plan. See the Bot API page for docs."],
-            ].map(([q, a]) => (
-              <details key={q} className="rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:border-white/20">
-                <summary className="cursor-pointer text-sm font-semibold">{q}</summary>
-                <p className="mt-2 text-sm leading-6 text-white/70">{a}</p>
-              </details>
+              ["01", "Paste it", "Drop a message, link, or screenshot. No signup required."],
+              ["02", "We analyze", "URL inspection, OCR, lookalike checks, and AI patterns."],
+              ["03", "You decide", "Risk score, top reasons, and a clear next step."],
+            ].map(([num, title, body]) => (
+              <div key={num} className="hover-lift rounded-2xl border border-white/10 bg-black/30 p-4 md:p-5">
+                <div className="mono-readout mb-3 inline-flex rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1 text-xs font-bold text-cyan-100">
+                  {num}
+                </div>
+                <h3 className="text-base font-bold md:text-lg">{title}</h3>
+                <p className="mt-1.5 text-sm leading-6 text-white/65">{body}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-7xl px-4 md:px-6"><div className="section-divider" /></div>
+      {/* FAQ — single column, compact */}
+      <section className="mx-auto w-full max-w-3xl px-4 pb-10 md:px-6 md:pb-14">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-white/45 md:text-xs">FAQ</div>
+        <h2 className="mt-2 text-2xl font-black md:text-3xl">Common questions</h2>
+        <div className="mt-5 space-y-2 md:mt-6">
+          {[
+            ["How accurate is the score?", "Scores combine rule-based signals, URL/marketplace extraction, image analysis, and AI interpretation. Treat high-risk results as a strong warning. False-positive rate sits under 4% in human review."],
+            ["Can I check screenshots from mobile?", "Yes — upload from gallery or capture from camera on iOS and Android directly in the browser. No install required."],
+            ["Is my data private?", "We don't sell or share analysis data. Local-first storage is the default; cloud sync is opt-in via magic link."],
+            ["What happens after my free check?", "Unlock more with a $0.99 single pass, Shield Monthly ($4.99/mo with 3-day free trial), or Shield Yearly ($29.99/yr — 50% off). Cancel anytime."],
+            ["Do you offer a bot or API?", "Yes — connect Telegram or WhatsApp bots via our Bot API. See the Bot API docs for details."],
+          ].map(([q, a]) => (
+            <details key={q} className="group rounded-xl border border-white/10 bg-black/25 p-3.5 transition hover:border-white/20 md:p-4">
+              <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-semibold list-none [&::-webkit-details-marker]:hidden">
+                <span>{q}</span>
+                <span className="mono-readout shrink-0 text-base text-cyan-300 transition group-open:rotate-45">+</span>
+              </summary>
+              <p className="mt-2 text-sm leading-6 text-white/70">{a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
 
-      {/* FINAL CTA */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-16 pt-10 md:px-6 md:pt-14">
-        <div className="relative overflow-hidden rounded-[32px] border border-cyan-300/30 bg-gradient-to-br from-cyan-500/25 via-cyan-900/20 to-black p-8 md:p-12">
-          <div className="absolute -top-24 right-10 hidden h-64 w-64 rounded-full bg-cyan-500/30 blur-3xl md:block" />
-          <div className="absolute -bottom-24 left-10 hidden h-64 w-64 rounded-full bg-orange-500/20 blur-3xl md:block" />
-          <div className="relative grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+      {/* FINAL CTA — compact with stats */}
+      <section className="mx-auto w-full max-w-6xl px-4 pb-14 pt-2 md:px-6 md:pb-20">
+        <div className="relative overflow-hidden rounded-3xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/15 via-cyan-900/10 to-black p-6 md:rounded-[32px] md:p-10">
+          <div className="absolute -top-20 right-10 hidden h-48 w-48 rounded-full bg-cyan-500/25 blur-3xl md:block" />
+          <div className="relative grid gap-6 md:gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <div className="inline-flex rounded-full border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100">
-                One paste could save thousands
-              </div>
-              <h2 className="mt-4 text-4xl font-black leading-[0.95] md:text-6xl">
+              <h2 className="text-3xl font-black leading-[1] md:text-5xl">
                 Don&apos;t guess. <span className="gradient-text">Scan it.</span>
               </h2>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-white/75">
-                Every day, real people lose money to messages they suspected were fake but couldn&apos;t
-                prove in the moment. ScamRadar gives you proof — in seconds.
+              <p className="mt-3 max-w-xl text-sm leading-7 text-white/70 md:mt-4 md:text-base md:leading-8">
+                One paste. Two seconds. Real proof — before you lose money.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="#checker" className="rounded-2xl bg-cyan-500 px-6 py-4 text-base font-black text-white transition hover:bg-cyan-400 glow-red">
-                  Run your first check — free
+              <div className="mt-5 flex flex-wrap gap-2.5 md:mt-6">
+                <Link href="#checker" className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-black text-white transition hover:bg-cyan-400 glow-accent md:text-base">
+                  Run free check
                 </Link>
-                <Link href="/pricing" className="rounded-2xl border border-white/15 bg-white/[0.05] px-6 py-4 text-base font-semibold text-white transition hover:bg-white/[0.12]">
-                  Compare plans
+                <Link href="/pricing" className="rounded-xl border border-white/15 bg-white/[0.05] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.12] md:text-base">
+                  See plans
                 </Link>
               </div>
             </div>
-
-            <div className="grid gap-3">
-              <div className="rounded-3xl border border-white/10 bg-black/55 p-5 md:bg-black/35 md:backdrop-blur">
-                <div className="mono-readout text-4xl font-black text-white">$47M+</div>
-                <div className="mt-1 text-sm text-white/70">Losses prevented across community reports.</div>
+            <div className="grid grid-cols-3 gap-2 md:gap-3 lg:grid-cols-1">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-3 md:p-4">
+                <div className="mono-readout text-xl font-black text-white md:text-3xl">$47M+</div>
+                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Losses prevented</div>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-black/55 p-5 md:bg-black/35 md:backdrop-blur">
-                <div className="mono-readout text-4xl font-black text-white">1.8s</div>
-                <div className="mt-1 text-sm text-white/70">Average response time — faster than reading twice.</div>
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-3 md:p-4">
+                <div className="mono-readout text-xl font-black text-white md:text-3xl">1.8s</div>
+                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Avg response</div>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-black/55 p-5 md:bg-black/35 md:backdrop-blur">
-                <div className="mono-readout text-4xl font-black text-white">47</div>
-                <div className="mt-1 text-sm text-white/70">Countries with active users and watchlists.</div>
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-3 md:p-4">
+                <div className="mono-readout text-xl font-black text-white md:text-3xl">47</div>
+                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Countries</div>
               </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* SHARE + BOT */}
-      <section className="mx-auto w-full max-w-7xl px-4 pb-16 md:px-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="glass-panel rounded-3xl p-6">
-            <div className="mono-readout text-3xl font-black text-white">Bot-ready</div>
-            <div className="mt-2 text-lg font-bold">Telegram / WhatsApp entry</div>
-            <div className="mt-1 text-sm text-white/65">Connect bot workflows via API or quick-share links.</div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <a href={telegramShareLink} target="_blank" rel="noreferrer" className="rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.12]">
-                Telegram share
-              </a>
-              <a href={whatsappShareLink} target="_blank" rel="noreferrer" className="rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.12]">
-                WhatsApp share
-              </a>
-              <Link href="/bot" className="rounded-lg border border-cyan-300/30 bg-cyan-500/20 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30">
-                Bot API docs
-              </Link>
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-3xl p-6">
-            <div className="mono-readout text-3xl font-black text-white">History + Export</div>
-            <div className="mt-2 text-lg font-bold">Decision trail</div>
-            <div className="mt-1 text-sm text-white/65">Keep recent checks, reuse inputs, and export proof in one click.</div>
-          </div>
-
-          <div className="rounded-3xl border border-cyan-300/35 bg-cyan-500/15 p-6">
-            <div className="mono-readout text-3xl font-black text-cyan-100">Community Intel</div>
-            <div className="mt-2 text-lg font-bold">Crowd-powered warnings</div>
-            <div className="mt-1 text-sm text-white/80">Report suspicious domains/sellers and strengthen future risk detection.</div>
-          </div>
-        </div>
-      </section>
-
       {/* Mobile floating CTA */}
       <div className="fixed bottom-4 left-4 right-4 z-30 md:hidden">
         <a
