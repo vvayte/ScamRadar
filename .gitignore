@@ -46,3 +46,4 @@ Thumbs.db
 # Misc
 -p
 push_to_github.bat
+.claude/worktrees/

@@ -2,15 +2,19 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Script from "next/script";
-import { Fraunces, JetBrains_Mono, Space_Grotesk, Sora } from "next/font/google";
+import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import Analytics from "@/components/Analytics";
-import NewsletterForm from "@/components/NewsletterForm";
-import { RadarSweep } from "@/components/Icons";
+import { Logo } from "@/components/ui/Logo";
 
-const bodyFont = Space_Grotesk({ subsets: ["latin"], variable: "--font-body", display: "swap" });
-const displayFont = Sora({ subsets: ["latin"], variable: "--font-display", display: "swap" });
+const sansFont = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const displayFont = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
+  variable: "--font-display",
+  display: "swap",
+});
 const monoFont = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
-const serifFont = Fraunces({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
 
 const fallbackSiteUrl = "https://scamradar.app";
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || fallbackSiteUrl;
@@ -61,8 +65,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#04080d",
-  colorScheme: "dark",
+  themeColor: "#F7F8FA",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
 };
@@ -71,7 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const year = new Date().getFullYear();
 
   return (
-    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${serifFont.variable}`}>
+    <html lang="en" className={`${sansFont.variable} ${displayFont.variable} ${monoFont.variable}`}>
       <body>
         <Script id="org-jsonld" type="application/ld+json" strategy="afterInteractive">
           {JSON.stringify({
@@ -111,71 +115,107 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Script defer data-domain={plausibleDomain} src={plausibleScriptSrc} strategy="afterInteractive" />
         ) : null}
 
-        <div className="flex min-h-screen flex-col">
-          <div className="flex-1">{children}</div>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+          <header
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 50,
+              background: "rgba(247,248,250,0.85)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              borderBottom: "1px solid var(--hairline)",
+            }}
+          >
+            <div
+              className="container"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                height: 68,
+              }}
+            >
+              <Link href="/" style={{ display: "inline-flex" }}>
+                <Logo />
+              </Link>
+              <nav className="hidden md:flex" style={{ gap: 28, alignItems: "center" }}>
+                <a href="/#product" style={{ color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>Product</a>
+                <a href="/#how-it-works" style={{ color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>How it works</a>
+                <Link href="/pricing" style={{ color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>Pricing</Link>
+                <Link href="/bot" style={{ color: "var(--ink-2)", fontSize: 14, fontWeight: 500 }}>API</Link>
+              </nav>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Link href="/account" className="btn btn-ghost btn-sm hidden sm:inline-flex">Sign in</Link>
+                <a href="/#checker-card" className="btn btn-primary btn-sm">Run free check</a>
+              </div>
+            </div>
+          </header>
 
-          <footer className="border-t border-white/10 bg-black/60">
-            <div className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6 md:py-14">
-              <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/15 shadow-[0_0_24px_rgba(34,211,238,0.35)]" aria-hidden="true">
-                      <RadarSweep size={28} />
-                    </div>
-                    <div>
-                      <div className="text-lg font-black">ScamRadar</div>
-                      <div className="text-xs uppercase tracking-[0.2em] text-white/50">Threat Screening Engine</div>
-                    </div>
-                  </div>
-                  <p className="mt-4 max-w-sm text-sm leading-6 text-white/65">
-                    The fastest way to tell a scam from a real message. Built for marketplace buyers,
-                    sellers, and anyone who&apos;s received one too many suspicious DMs.
-                  </p>
+          <main style={{ flex: 1 }}>{children}</main>
 
-                  <NewsletterForm />
-                </div>
+          <footer style={{ background: "var(--bg)", padding: "56px 0 32px" }}>
+            <div
+              className="container"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.5fr 1fr 1fr 1fr",
+                gap: 32,
+                marginBottom: 40,
+              }}
+            >
+              <div>
+                <Logo />
+                <p className="t-body-sm" style={{ marginTop: 16, maxWidth: 280 }}>
+                  A scam check in 2 seconds. Paste, analyze, decide.
+                </p>
+              </div>
 
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/50">Product</div>
-                  <ul className="mt-4 space-y-2 text-sm">
-                    <li><Link href="/" className="text-white/75 hover:text-white">Scam checker</Link></li>
-                    <li><Link href="/examples" className="text-white/75 hover:text-white">Example library</Link></li>
-                    <li><Link href="/bot" className="text-white/75 hover:text-white">Bot API</Link></li>
-                    <li><Link href="/pricing" className="text-white/75 hover:text-white">Pricing</Link></li>
-                  </ul>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/50">Resources</div>
-                  <ul className="mt-4 space-y-2 text-sm">
-                    <li><Link href="/examples" className="text-white/75 hover:text-white">Scam patterns</Link></li>
-                    <li><a href="#how-it-works" className="text-white/75 hover:text-white">How it works</a></li>
-                    <li><a href="#trust" className="text-white/75 hover:text-white">Reviews</a></li>
-                    <li><Link href="/bot" className="text-white/75 hover:text-white">Developer docs</Link></li>
-                  </ul>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/50">Company</div>
-                  <ul className="mt-4 space-y-2 text-sm">
-                    <li><Link href="/privacy" className="text-white/75 hover:text-white">Privacy</Link></li>
-                    <li><Link href="/terms" className="text-white/75 hover:text-white">Terms</Link></li>
-                    <li><a href="mailto:hello@scamradar.app" className="text-white/75 hover:text-white">Contact</a></li>
-                    <li><a href="mailto:security@scamradar.app" className="text-white/75 hover:text-white">Security</a></li>
-                  </ul>
+              <div>
+                <div className="t-label" style={{ marginBottom: 12 }}>Product</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <Link href="/" style={{ color: "var(--ink-2)", fontSize: 14 }}>Checker</Link>
+                  <Link href="/bot" style={{ color: "var(--ink-2)", fontSize: 14 }}>Bot API</Link>
+                  <Link href="/pricing" style={{ color: "var(--ink-2)", fontSize: 14 }}>Pricing</Link>
+                  <Link href="/examples" style={{ color: "var(--ink-2)", fontSize: 14 }}>Examples</Link>
                 </div>
               </div>
 
-              <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-white/50 md:flex-row md:items-center md:justify-between">
-                <div>© {year} ScamRadar. Built for people who pay attention.</div>
-                <div className="flex flex-wrap items-center gap-4">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" /> All systems operational
-                  </span>
-                  <span>SOC 2 roadmap Q3 2026</span>
-                  <span>GDPR-aware</span>
+              <div>
+                <div className="t-label" style={{ marginBottom: 12 }}>Resources</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <a href="/#how-it-works" style={{ color: "var(--ink-2)", fontSize: 14 }}>How it works</a>
+                  <Link href="/examples" style={{ color: "var(--ink-2)", fontSize: 14 }}>Scam patterns</Link>
+                  <a href="/#faq" style={{ color: "var(--ink-2)", fontSize: 14 }}>FAQ</a>
+                  <Link href="/bot" style={{ color: "var(--ink-2)", fontSize: 14 }}>Developer docs</Link>
                 </div>
               </div>
+
+              <div>
+                <div className="t-label" style={{ marginBottom: 12 }}>Company</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <Link href="/privacy" style={{ color: "var(--ink-2)", fontSize: 14 }}>Privacy</Link>
+                  <Link href="/terms" style={{ color: "var(--ink-2)", fontSize: 14 }}>Terms</Link>
+                  <a href="mailto:hello@scamradar.app" style={{ color: "var(--ink-2)", fontSize: 14 }}>Contact</a>
+                  <a href="mailto:security@scamradar.app" style={{ color: "var(--ink-2)", fontSize: 14 }}>Security</a>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="container"
+              style={{
+                borderTop: "1px solid var(--hairline)",
+                paddingTop: 24,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div className="t-body-sm">© {year} ScamRadar. All rights reserved.</div>
+              <div className="t-body-sm">Built for safer transactions.</div>
             </div>
           </footer>
         </div>
