@@ -54,6 +54,7 @@ describe('POST /api/checkout/session', () => {
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      STRIPE_SECRET_KEY: 'sk_test_dummy',
       STRIPE_PRICE_ID_SINGLE: 'price_single',
       STRIPE_PRICE_ID_MONTHLY: 'price_monthly',
       STRIPE_PRICE_ID_YEARLY: 'price_yearly',

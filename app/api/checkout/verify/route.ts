@@ -12,6 +12,9 @@ export async function GET(req: NextRequest) {
   if (!sessionId) {
     return NextResponse.json({ error: 'Missing session_id' }, { status: 400 });
   }
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({ error: 'Stripe secret key is not configured.' }, { status: 503 });
+  }
   try {
     // Retrieve the session and line items to determine what was purchased
     const session = await stripe.checkout.sessions.retrieve(sessionId, {

@@ -29,6 +29,7 @@ describe('GET /api/checkout/verify', () => {
     vi.clearAllMocks();
     process.env = {
       ...originalEnv,
+      STRIPE_SECRET_KEY: 'sk_test_dummy',
       STRIPE_PRICE_ID_SINGLE: 'price_single',
       STRIPE_PRICE_ID_PACK: 'price_pack',
     };

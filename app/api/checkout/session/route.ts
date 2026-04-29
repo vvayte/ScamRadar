@@ -16,6 +16,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid purchase type' }, { status: 400 });
     }
 
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json({ error: 'Stripe secret key is not configured.' }, { status: 503 });
+    }
+
     const config = PLAN_CONFIG[type];
     const priceId = process.env[config.envKey];
 
