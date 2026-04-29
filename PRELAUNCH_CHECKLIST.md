@@ -31,9 +31,10 @@
    - `STRIPE_PRICE_ID_MONTHLY`
    - `STRIPE_PRICE_ID_YEARLY`
    - `STRIPE_PRICE_ID_FLASH`
+   - `STRIPE_WEBHOOK_SECRET`
    - `RESEND_API_KEY` and `RESEND_FROM_EMAIL` if email verification is enabled
    - `REQUIRE_EMAIL_VERIFICATION=true` after Resend domain verification is complete
-2. Set up Stripe production prices and verify checkout success/cancel URLs.
+2. Set up Stripe production prices, webhook endpoint `/api/stripe/webhook`, and verify checkout success/cancel URLs.
 3. Configure your custom domain + HTTPS and verify DNS propagation.
 4. Add your support email and company/contact details inside legal pages.
 5. Add analytics IDs and verify real-time events after deploy.
@@ -44,6 +45,6 @@
 7. Submit domain to Google Search Console and verify `sitemap.xml`.
 
 ## Recommended after launch
-- Add webhook-based Stripe subscription state syncing.
+- Add billing-portal account management for subscription cancel/update flows.
 - Add server-side persisted user history (instead of only localStorage).
 - Add abuse monitoring alerts for unusual API spikes.

@@ -5,6 +5,8 @@ export const metadata = {
 };
 
 export default function PrivacyPage() {
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@scamradar.app";
+
   return (
     <main className="site-shell min-h-screen px-4 py-10 text-white md:px-6">
       <div className="mx-auto w-full max-w-4xl rounded-3xl border border-white/12 bg-black/35 p-6 md:p-10">
@@ -84,8 +86,10 @@ export default function PrivacyPage() {
           <section>
             <h2 className="mb-2 text-xl font-bold text-white">8. Contact</h2>
             <p>
-              For privacy requests, contact your support address configured for production
-              launch.
+              For privacy requests, contact us at{" "}
+              <a className="text-cyan-200 underline-offset-4 hover:underline" href={`mailto:${supportEmail}`}>
+                {supportEmail}
+              </a>.
             </p>
           </section>
         </div>

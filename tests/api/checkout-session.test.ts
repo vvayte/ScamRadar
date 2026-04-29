@@ -1,7 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { createSessionMock } = vi.hoisted(() => ({
+const {
+  createSessionMock,
+  userFindUniqueMock,
+  stripeCheckoutSessionUpsertMock,
+  getSessionUserMock,
+  resolveUsageSubjectMock,
+  attachAnonymousCookieMock,
+} = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
+  userFindUniqueMock: vi.fn(),
+  stripeCheckoutSessionUpsertMock: vi.fn(),
+  getSessionUserMock: vi.fn(),
+  resolveUsageSubjectMock: vi.fn(),
+  attachAnonymousCookieMock: vi.fn(),
 }));
 
 vi.mock('@/lib/stripe', () => ({
@@ -12,6 +24,24 @@ vi.mock('@/lib/stripe', () => ({
       },
     },
   },
+}));
+
+vi.mock('@/lib/db', () => ({
+  default: {
+    user: {
+      findUnique: userFindUniqueMock,
+    },
+    stripeCheckoutSession: {
+      upsert: stripeCheckoutSessionUpsertMock,
+    },
+  },
+}));
+
+vi.mock('@/lib/usage', () => ({
+  ANON_USAGE_COOKIE: 'sr_anon',
+  getSessionUser: getSessionUserMock,
+  resolveUsageSubject: resolveUsageSubjectMock,
+  attachAnonymousCookie: attachAnonymousCookieMock,
 }));
 
 import { POST } from '@/app/api/checkout/session/route';
@@ -29,6 +59,15 @@ describe('POST /api/checkout/session', () => {
       STRIPE_PRICE_ID_YEARLY: 'price_yearly',
       STRIPE_PRICE_ID_FLASH: 'price_flash',
     };
+    getSessionUserMock.mockResolvedValue(null);
+    resolveUsageSubjectMock.mockResolvedValue({
+      kind: 'anonymous',
+      anonymous: { key: 'anon_test', premium: false, credits: 0, count: 0 },
+      anonymousKey: 'anon_test',
+      setAnonymousCookie: false,
+    });
+    attachAnonymousCookieMock.mockImplementation((response) => response);
+    stripeCheckoutSessionUpsertMock.mockResolvedValue({});
   });
 
   it('returns 400 for an invalid purchase type', async () => {
@@ -45,7 +84,10 @@ describe('POST /api/checkout/session', () => {
   });
 
   it('creates a monthly subscription checkout session', async () => {
-    createSessionMock.mockResolvedValue({ url: 'https://checkout.stripe.test/session' });
+    createSessionMock.mockResolvedValue({
+      id: 'cs_test_monthly',
+      url: 'https://checkout.stripe.test/session',
+    });
 
     const request = new Request('http://localhost/api/checkout/session', {
       method: 'POST',
@@ -64,9 +106,20 @@ describe('POST /api/checkout/session', () => {
         mode: 'subscription',
         line_items: [{ price: 'price_monthly', quantity: 1 }],
         subscription_data: { trial_period_days: 3 },
+        metadata: {
+          planType: 'monthly',
+          userId: '',
+          anonymousKey: 'anon_test',
+        },
+        client_reference_id: 'anon_test',
         success_url:
           'http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',
         cancel_url: 'http://localhost:3000/cancel',
+      }),
+    );
+    expect(stripeCheckoutSessionUpsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'cs_test_monthly' },
       }),
     );
   });

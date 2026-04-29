@@ -7,6 +7,11 @@ const {
   consumeRateLimitMock,
   getClientIpMock,
   getCommunityRiskHintsForUrlsMock,
+  resolveUsageSubjectMock,
+  canRunCheckMock,
+  usageSnapshotMock,
+  applySuccessfulCheckMock,
+  attachAnonymousCookieMock,
 } = vi.hoisted(() => ({
   createCompletionMock: vi.fn(),
   inspectListingUrlsFromTextMock: vi.fn(),
@@ -14,6 +19,11 @@ const {
   consumeRateLimitMock: vi.fn(),
   getClientIpMock: vi.fn(),
   getCommunityRiskHintsForUrlsMock: vi.fn(),
+  resolveUsageSubjectMock: vi.fn(),
+  canRunCheckMock: vi.fn(),
+  usageSnapshotMock: vi.fn(),
+  applySuccessfulCheckMock: vi.fn(),
+  attachAnonymousCookieMock: vi.fn(),
 }));
 
 vi.mock('@/lib/openaiClient', () => ({
@@ -39,8 +49,16 @@ vi.mock('@/lib/requestGuard', () => ({
   getClientIp: getClientIpMock,
 }));
 
-vi.mock('@/lib/platformDataStore', () => ({
+vi.mock('@/lib/communityIntel', () => ({
   getCommunityRiskHintsForUrls: getCommunityRiskHintsForUrlsMock,
+}));
+
+vi.mock('@/lib/usage', () => ({
+  resolveUsageSubject: resolveUsageSubjectMock,
+  canRunCheck: canRunCheckMock,
+  usageSnapshot: usageSnapshotMock,
+  applySuccessfulCheck: applySuccessfulCheckMock,
+  attachAnonymousCookie: attachAnonymousCookieMock,
 }));
 
 import { POST } from '@/app/api/check/route';
@@ -53,6 +71,11 @@ describe('POST /api/check', () => {
     consumeRateLimitMock.mockReset();
     getClientIpMock.mockReset();
     getCommunityRiskHintsForUrlsMock.mockReset();
+    resolveUsageSubjectMock.mockReset();
+    canRunCheckMock.mockReset();
+    usageSnapshotMock.mockReset();
+    applySuccessfulCheckMock.mockReset();
+    attachAnonymousCookieMock.mockReset();
 
     consumeRateLimitMock.mockReturnValue({
       allowed: true,
@@ -60,7 +83,29 @@ describe('POST /api/check', () => {
       retryAfterSeconds: 60,
     });
     getClientIpMock.mockReturnValue('127.0.0.1');
-    getCommunityRiskHintsForUrlsMock.mockReturnValue([]);
+    getCommunityRiskHintsForUrlsMock.mockResolvedValue([]);
+    resolveUsageSubjectMock.mockResolvedValue({
+      kind: 'anonymous',
+      anonymous: { key: 'anon_test', premium: false, credits: 0, count: 0 },
+      anonymousKey: 'anon_test',
+      setAnonymousCookie: false,
+    });
+    canRunCheckMock.mockReturnValue(true);
+    usageSnapshotMock.mockReturnValue({
+      authenticated: false,
+      premium: false,
+      credits: 0,
+      count: 2,
+      freeLimit: 2,
+    });
+    applySuccessfulCheckMock.mockResolvedValue({
+      authenticated: false,
+      premium: false,
+      credits: 0,
+      count: 1,
+      freeLimit: 2,
+    });
+    attachAnonymousCookieMock.mockImplementation((response) => response);
 
     inspectListingUrlsFromTextMock.mockResolvedValue({
       urls: [],
@@ -98,6 +143,43 @@ describe('POST /api/check', () => {
     expect(response.status).toBe(200);
     expect(payload.skipAI).toBe(true);
     expect(payload.level).toBe('High');
+    expect(payload.usage).toEqual({
+      authenticated: false,
+      premium: false,
+      credits: 0,
+      count: 1,
+      freeLimit: 2,
+    });
+    expect(createCompletionMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 402 before analysis when server-side usage is exhausted', async () => {
+    canRunCheckMock.mockReturnValueOnce(false);
+
+    const request = new Request('http://localhost/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: 'Please check this suspicious message.',
+      }),
+    });
+
+    const response = await POST(request as any);
+    const payload = await response.json();
+
+    expect(response.status).toBe(402);
+    expect(payload).toEqual({
+      error: 'Your free checks are used. Upgrade Shield or buy a one-off check to continue.',
+      code: 'PAYWALL_REQUIRED',
+      usage: {
+        authenticated: false,
+        premium: false,
+        credits: 0,
+        count: 2,
+        freeLimit: 2,
+      },
+    });
+    expect(inspectListingUrlsFromTextMock).not.toHaveBeenCalled();
     expect(createCompletionMock).not.toHaveBeenCalled();
   });
 
@@ -210,6 +292,13 @@ describe('POST /api/check', () => {
       reasons: ['Suspicious tone', 'Odd request', 'Bad grammar'],
       advice: 'Verify the sender before taking action.',
       skipAI: false,
+      usage: {
+        authenticated: false,
+        premium: false,
+        credits: 0,
+        count: 1,
+        freeLimit: 2,
+      },
     });
     expect(inspectListingUrlsFromTextMock).toHaveBeenCalledOnce();
     expect(createCompletionMock).toHaveBeenCalledOnce();

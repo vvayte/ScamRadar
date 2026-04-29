@@ -3,6 +3,15 @@ import db from "@/lib/db";
 
 export const runtime = "nodejs";
 
+function parseReasons(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed.map(String).slice(0, 3) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(req: NextRequest) {
   const token = req.cookies.get("sr_session")?.value;
   if (!token) return NextResponse.json({ user: null });
@@ -40,7 +49,7 @@ export async function GET(req: NextRequest) {
         input: h.input,
         score: h.score,
         level: h.level,
-        reasons: JSON.parse(h.reasons || "[]"),
+        reasons: parseReasons(h.reasons),
         advice: h.advice,
         hasImage: h.hasImage,
       })),

@@ -18,7 +18,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bot API is not configured." }, { status: 503 });
     }
 
-    const providedToken = req.headers.get("x-bot-token") || "";
+    const authHeader = req.headers.get("authorization") || "";
+    const bearerToken = authHeader.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice("bearer ".length).trim()
+      : "";
+    const providedToken = bearerToken || req.headers.get("x-bot-token") || "";
     if (!providedToken || providedToken !== expectedToken) {
       return NextResponse.json({ error: "Unauthorized bot request." }, { status: 401 });
     }

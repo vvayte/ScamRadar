@@ -4,16 +4,37 @@ import { useState } from "react";
 
 export default function NewsletterForm() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [message, setMessage] = useState("Monthly. Scam trends, never spam.");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
+
     setStatus("sending");
-    setTimeout(() => {
+    setMessage("Monthly. Scam trends, never spam.");
+
+    try {
+      const response = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setStatus("error");
+        setMessage(data?.error || "Could not subscribe. Please try again.");
+        return;
+      }
+
       setStatus("done");
       setEmail("");
-    }, 600);
+      setMessage("Subscribed. Watch your inbox for security tips.");
+    } catch {
+      setStatus("error");
+      setMessage("Network error. Please try again.");
+    }
   };
 
   return (
@@ -33,10 +54,12 @@ export default function NewsletterForm() {
           disabled={status === "sending"}
           className="press rounded-xl bg-cyan-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-cyan-400 disabled:opacity-60"
         >
-          {status === "sending" ? "..." : status === "done" ? "✓ Subscribed" : "Subscribe"}
+          {status === "sending" ? "..." : status === "done" ? "Subscribed" : "Subscribe"}
         </button>
       </form>
-      <p className="mt-2 text-xs text-white/45">Monthly. Scam trends, never spam.</p>
+      <p className={`mt-2 text-xs ${status === "error" ? "text-rose-200" : "text-white/45"}`}>
+        {message}
+      </p>
     </div>
   );
 }

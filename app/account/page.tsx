@@ -101,7 +101,7 @@ export default function AccountPage() {
             <div className="mono-readout mt-2 text-2xl font-black text-white">{user.credits}</div>
           </div>
           <div className="glass-panel rounded-2xl p-5">
-            <div className="text-xs uppercase tracking-[0.2em] text-white/45">Total checks</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-white/45">Free checks used</div>
             <div className="mono-readout mt-2 text-2xl font-black text-white">{user.count}</div>
           </div>
         </div>

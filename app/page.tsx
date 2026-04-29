@@ -12,7 +12,7 @@ import ScamExamples from "@/components/ScamExamples";
 import TrustStrip from "@/components/TrustStrip";
 import AuthModal from "@/components/AuthModal";
 import HeroDemo from "@/components/HeroDemo";
-import { AlertIcon, BoltIcon, CameraIcon, CheckIcon, GlobeIcon, RadarSweep, ScanIcon, ShieldIcon, StarIcon, UploadIcon } from "@/components/Icons";
+import { AlertIcon, BoltIcon, CameraIcon, CheckIcon, CloseIcon, GlobeIcon, MenuIcon, RadarSweep, ScanIcon, ShieldIcon, StarIcon, UploadIcon } from "@/components/Icons";
 
 const Testimonials = dynamic(() => import("@/components/Testimonials"), { ssr: false });
 const ScamTypes = dynamic(() => import("@/components/ScamTypes"), { ssr: false });
@@ -24,10 +24,9 @@ const FollowUpChat = dynamic(() => import("@/components/FollowUpChat"), { ssr: f
 const FlashOffer = dynamic(() => import("@/components/FlashOffer"), { ssr: false });
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+const FREE_CHECK_LIMIT = 2;
 const HISTORY_STORAGE_KEY = "scamRadarHistory";
 const WATCHLIST_STORAGE_KEY = "scamRadarWatchlist";
-const AUTH_EMAIL_STORAGE_KEY = "scamRadarAuthEmail";
-const AUTH_TOKEN_STORAGE_KEY = "scamRadarAuthToken";
 
 type HistoryItem = {
   id: string;
@@ -35,6 +34,36 @@ type HistoryItem = {
   input: string;
   result: ScamResult;
   hasImage: boolean;
+};
+
+type DbHistoryItem = {
+  id: string;
+  createdAt: string;
+  input: string;
+  score: number;
+  level: string;
+  reasons?: string[];
+  advice: string;
+  hasImage?: boolean;
+};
+
+type DbUser = {
+  id: string;
+  email: string;
+  name: string | null;
+  premium: boolean;
+  credits: number;
+  count: number;
+  history?: DbHistoryItem[];
+  watchlist?: string[];
+};
+
+type UsageSnapshot = {
+  authenticated: boolean;
+  premium: boolean;
+  credits: number;
+  count: number;
+  freeLimit: number;
 };
 
 function safeParse<T>(value: string | null, fallback: T): T {
@@ -98,23 +127,48 @@ export default function HomePage() {
   const [reportStatus, setReportStatus] = useState("");
   const [showReportForm, setShowReportForm] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
-  const [authEmail, setAuthEmail] = useState("");
-  const [authToken, setAuthToken] = useState("");
-  const [magicEmailInput, setMagicEmailInput] = useState("");
-  const [magicTokenInput, setMagicTokenInput] = useState("");
-  const [authStatus, setAuthStatus] = useState("");
-  const [devMagicLink, setDevMagicLink] = useState("");
   const [appOrigin, setAppOrigin] = useState("https://scamradar.app");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [headerScrolled, setHeaderScrolled] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<"correct" | "wrong" | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [dbUser, setDbUser] = useState<{ id: string; email: string; name: string | null; premium: boolean; credits: number; count: number } | null>(null);
+  const [dbUser, setDbUser] = useState<DbUser | null>(null);
 
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const inputSectionRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const hydrateDbUser = (user: DbUser) => {
+    setDbUser(user);
+    setPremium(Boolean(user.premium));
+    setCredits(Math.max(0, Number(user.credits) || 0));
+    setCount(Math.max(0, Number(user.count) || 0));
+    persistState(Math.max(0, Number(user.count) || 0), Boolean(user.premium), Math.max(0, Number(user.credits) || 0));
+
+    if (Array.isArray(user.history)) {
+      const cloudHistory: HistoryItem[] = user.history.slice(0, 20).map((item) => ({
+        id: String(item.id || crypto.randomUUID()),
+        createdAt: String(item.createdAt || new Date().toISOString()),
+        input: String(item.input || ""),
+        hasImage: Boolean(item.hasImage),
+        result: {
+          score: Number(item.score) || 0,
+          level: String(item.level || "Low"),
+          reasons: Array.isArray(item.reasons) ? item.reasons.slice(0, 3).map(String) : [],
+          advice: String(item.advice || ""),
+        },
+      }));
+      setHistory(cloudHistory);
+      persistHistory(cloudHistory);
+    }
+
+    if (Array.isArray(user.watchlist)) {
+      const cloudWatchlist = user.watchlist.slice(0, 50).map((entry) => String(entry));
+      setWatchlist(cloudWatchlist);
+      persistWatchlist(cloudWatchlist);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -132,29 +186,21 @@ export default function HomePage() {
     const storedCredits = parseInt(localStorage.getItem("scamRadarCredits") ?? "0");
     const storedHistory = safeParse<HistoryItem[]>(localStorage.getItem(HISTORY_STORAGE_KEY), []);
     const storedWatchlist = safeParse<string[]>(localStorage.getItem(WATCHLIST_STORAGE_KEY), []);
-    const storedAuthEmail = localStorage.getItem(AUTH_EMAIL_STORAGE_KEY) || "";
-    const storedAuthToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || "";
 
     setCount(Number.isNaN(storedCount) ? 0 : storedCount);
     setPremium(storedPremium);
     setCredits(Number.isNaN(storedCredits) ? 0 : storedCredits);
     setHistory(Array.isArray(storedHistory) ? storedHistory.slice(0, 20) : []);
     setWatchlist(Array.isArray(storedWatchlist) ? storedWatchlist.slice(0, 50) : []);
-    setAuthEmail(storedAuthEmail);
-    setAuthToken(storedAuthToken);
-    setMagicEmailInput(storedAuthEmail);
     setAppOrigin(window.location.origin || "https://scamradar.app");
 
-    // load DB session
-    fetch("/api/auth/me").then((r) => r.json()).then((d) => {
-      if (d?.user) setDbUser(d.user);
-    }).catch(() => {});
-
-    const tokenFromUrl = new URL(window.location.href).searchParams.get("magic_token");
-    if (tokenFromUrl) {
-      setMagicTokenInput(tokenFromUrl);
-      setAuthStatus("Magic token detected. Press Verify token to sign in.");
-    }
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d: { user?: DbUser | null }) => {
+        if (d?.user) hydrateDbUser(d.user);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -199,7 +245,7 @@ export default function HomePage() {
   const checksLeft = useMemo(() => {
     if (premium) return "Unlimited checks";
     if (credits > 0) return `${credits} paid check${credits === 1 ? "" : "s"}`;
-    const freeLeft = Math.max(0, 1 - count);
+    const freeLeft = Math.max(0, FREE_CHECK_LIMIT - count);
     return `${freeLeft} free check${freeLeft === 1 ? "" : "s"} left`;
   }, [count, credits, premium]);
 
@@ -269,56 +315,16 @@ export default function HomePage() {
     setImageFile(file);
   };
 
-  const requestMagicLink = async () => {
-    const email = magicEmailInput.trim().toLowerCase();
-    if (!email) {
-      setAuthStatus("Enter your email first.");
-      return;
-    }
-    setAuthStatus("Requesting magic link...");
-    setDevMagicLink("");
-    try {
-      const response = await fetch("/api/auth/request-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, origin: appOrigin }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setAuthStatus(data?.error || "Failed to request magic link.");
-        return;
-      }
-      setAuthStatus(
-        data?.delivered
-          ? "Magic link sent. Check your email."
-          : "Magic link generated (dev mode). Paste token below or open the link."
-      );
-      if (data?.magicLink) {
-        setDevMagicLink(data.magicLink);
-        const tokenFromLink = new URL(data.magicLink).searchParams.get("magic_token");
-        if (tokenFromLink) setMagicTokenInput(tokenFromLink);
-      }
-    } catch {
-      setAuthStatus("Network error while requesting magic link.");
-    }
-  };
-
-  const syncToCloud = async (overrides?: {
-    premium?: boolean;
-    credits?: number;
-    count?: number;
+  const syncToDbAccount = async (overrides?: {
     history?: HistoryItem[];
     watchlist?: string[];
   }) => {
-    if (!authToken) return;
+    if (!dbUser) return;
     try {
-      await fetch("/api/account", {
+      const response = await fetch("/api/account/sync", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          premium: overrides?.premium ?? premium,
-          credits: overrides?.credits ?? credits,
-          count: overrides?.count ?? count,
           history: (overrides?.history ?? history).map((item) => ({
             id: item.id,
             createdAt: item.createdAt,
@@ -332,82 +338,11 @@ export default function HomePage() {
           watchlist: overrides?.watchlist ?? watchlist,
         }),
       });
-    } catch {}
-  };
-
-  const loadFromCloud = async (tokenParam?: string) => {
-    const token = tokenParam || authToken;
-    if (!token) return;
-    const response = await fetch("/api/account", { headers: { Authorization: `Bearer ${token}` } });
-    const data = await response.json();
-    if (!response.ok || !data?.profile) throw new Error(data?.error || "Failed to load cloud profile.");
-    const profile = data.profile;
-    setPremium(Boolean(profile.premium));
-    setCredits(Math.max(0, Number(profile.credits) || 0));
-    setCount(Math.max(0, Number(profile.count) || 0));
-    persistState(Number(profile.count) || 0, Boolean(profile.premium), Number(profile.credits) || 0);
-    const cloudHistory: HistoryItem[] = Array.isArray(profile.history)
-      ? profile.history.slice(0, 20).map((item: any) => ({
-          id: String(item?.id || crypto.randomUUID()),
-          createdAt: String(item?.createdAt || new Date().toISOString()),
-          input: String(item?.input || ""),
-          hasImage: Boolean(item?.hasImage),
-          result: {
-            score: Number(item?.score) || 0,
-            level: String(item?.level || "Low"),
-            reasons: Array.isArray(item?.reasons) ? item.reasons.slice(0, 3).map((r: any) => String(r)) : [],
-            advice: String(item?.advice || ""),
-          },
-        }))
-      : [];
-    setHistory(cloudHistory);
-    persistHistory(cloudHistory);
-    const cloudWatchlist = Array.isArray(profile.watchlist)
-      ? profile.watchlist.slice(0, 50).map((entry: any) => String(entry))
-      : [];
-    setWatchlist(cloudWatchlist);
-    persistWatchlist(cloudWatchlist);
-  };
-
-  const verifyMagicToken = async () => {
-    const token = magicTokenInput.trim();
-    if (!token) {
-      setAuthStatus("Paste token first.");
-      return;
-    }
-    setAuthStatus("Verifying token...");
-    try {
-      const response = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data?.sessionToken || !data?.profile?.email) {
-        setAuthStatus(data?.error || "Token is invalid or expired.");
-        return;
-      }
-      setAuthToken(String(data.sessionToken));
-      setAuthEmail(String(data.profile.email));
-      localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, String(data.sessionToken));
-      localStorage.setItem(AUTH_EMAIL_STORAGE_KEY, String(data.profile.email));
-      setAuthStatus("Signed in. Cloud sync is active.");
-      setMagicTokenInput("");
-      setMagicEmailInput(String(data.profile.email));
-      await loadFromCloud(String(data.sessionToken));
+      const data = (await response.json().catch(() => ({}))) as { user?: DbUser };
+      if (response.ok && data?.user) setDbUser(data.user);
     } catch {
-      setAuthStatus("Verification failed. Please try again.");
+      // Local mode remains fully usable when cloud sync is unavailable.
     }
-  };
-
-  const signOut = () => {
-    setAuthToken("");
-    setAuthEmail("");
-    setMagicEmailInput("");
-    setMagicTokenInput("");
-    setAuthStatus("Signed out.");
-    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-    localStorage.removeItem(AUTH_EMAIL_STORAGE_KEY);
   };
 
   const addWatchlistEntry = () => {
@@ -417,20 +352,20 @@ export default function HomePage() {
     setWatchlist(next);
     persistWatchlist(next);
     setWatchlistInput("");
-    void syncToCloud({ watchlist: next });
+    void syncToDbAccount({ watchlist: next });
   };
 
   const removeWatchlistEntry = (entry: string) => {
     const next = watchlist.filter((item) => item !== entry);
     setWatchlist(next);
     persistWatchlist(next);
-    void syncToCloud({ watchlist: next });
+    void syncToDbAccount({ watchlist: next });
   };
 
   const clearHistory = () => {
     setHistory([]);
     persistHistory([]);
-    void syncToCloud({ history: [] });
+    void syncToDbAccount({ history: [] });
   };
 
   const submitReport = async () => {
@@ -450,7 +385,7 @@ export default function HomePage() {
           indicatorValue,
           platform: reportPlatform,
           notes: reportNotes,
-          reporterEmail: authEmail || "",
+          reporterEmail: dbUser?.email || "",
         }),
       });
       const data = await response.json();
@@ -499,8 +434,10 @@ export default function HomePage() {
     const link = document.createElement("a");
     link.href = url;
     link.download = `scamradar-report-${new Date(latestHistoryItem.createdAt).toISOString().replace(/[:.]/g, "-")}.txt`;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
     setShareStatus("Report exported.");
   };
 
@@ -542,6 +479,7 @@ export default function HomePage() {
     }
 
     let currentResult: ScamResult | null = null;
+    let responseUsage: UsageSnapshot | null = null;
     const canUseCache = Boolean(trimmed) && !imageFile;
 
     if (canUseCache && cache[trimmed]) {
@@ -562,9 +500,25 @@ export default function HomePage() {
           });
         }
         const data = await response.json();
-        if (!response.ok) setError(data?.error || "Analysis failed. Please try again.");
-        else if (data && typeof data.score === "number") {
+        if (!response.ok) {
+          if (response.status === 402 || data?.code === "PAYWALL_REQUIRED") {
+            setShowPaywall(true);
+          }
+          if (data?.usage) {
+            responseUsage = data.usage;
+            setPremium(Boolean(data.usage.premium));
+            setCredits(Math.max(0, Number(data.usage.credits) || 0));
+            setCount(Math.max(0, Number(data.usage.count) || 0));
+            persistState(
+              Math.max(0, Number(data.usage.count) || 0),
+              Boolean(data.usage.premium),
+              Math.max(0, Number(data.usage.credits) || 0)
+            );
+          }
+          setError(data?.error || "Analysis failed. Please try again.");
+        } else if (data && typeof data.score === "number") {
           currentResult = data;
+          responseUsage = data.usage || null;
           if (canUseCache) {
             cache[trimmed] = data;
             localStorage.setItem("scamRadarCache", JSON.stringify(cache));
@@ -578,10 +532,10 @@ export default function HomePage() {
     }
 
     if (currentResult) {
-      let newCount = count;
-      let newCredits = credits;
-      const newPremium = premium;
-      if (!newPremium) {
+      let newCount = responseUsage ? Math.max(0, Number(responseUsage.count) || 0) : count;
+      let newCredits = responseUsage ? Math.max(0, Number(responseUsage.credits) || 0) : credits;
+      const newPremium = responseUsage ? Boolean(responseUsage.premium) : premium;
+      if (!responseUsage && !newPremium) {
         if (newCredits > 0) newCredits -= 1;
         else newCount += 1;
       }
@@ -609,13 +563,12 @@ export default function HomePage() {
         `${trimmed} ${currentResult.reasons.join(" ")} ${currentResult.advice}`.toLowerCase().includes(item)
       );
       if (watchHits.length > 0) setWatchlistAlert(`Watchlist match: ${watchHits.slice(0, 3).join(", ")}`);
-      if (!newPremium && newCredits === 0 && newCount >= 1) setShowPaywall(true);
-      void syncToCloud({ premium: newPremium, credits: newCredits, count: newCount, history: nextHistory });
+      void syncToDbAccount({ history: nextHistory });
     }
     setLoading(false);
   };
 
-  const isPartial = !premium && credits === 0 && count >= 1;
+  const isPartial = false;
 
   const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(appOrigin)}&text=${encodeURIComponent(
     "Check this suspicious listing with ScamRadar:"
@@ -639,7 +592,7 @@ export default function HomePage() {
           <nav className="hidden items-center gap-6 md:flex">
             <a href="#examples" className="text-sm text-white/70 transition hover:text-white">Examples</a>
             <a href="#types" className="text-sm text-white/70 transition hover:text-white">Scams we catch</a>
-            <a href="#trust" className="text-sm text-white/70 transition hover:text-white">Reviews</a>
+            <Link href="/reviews" className="text-sm text-white/70 transition hover:text-white">Reviews</Link>
             <Link href="/bot" className="text-sm text-white/70 transition hover:text-white">Bot API</Link>
             <Link href="/pricing" className="text-sm text-white/70 transition hover:text-white">Pricing</Link>
             {dbUser ? (
@@ -662,10 +615,10 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((v) => !v)}
-            className="rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-sm text-white md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.05] text-white md:hidden"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? "Close" : "Menu"}
+            {mobileMenuOpen ? <CloseIcon size={18} /> : <MenuIcon size={18} />}
           </button>
         </div>
 
@@ -674,7 +627,7 @@ export default function HomePage() {
             <div className="flex flex-col gap-2 text-sm">
               <a onClick={() => setMobileMenuOpen(false)} href="#examples" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Examples</a>
               <a onClick={() => setMobileMenuOpen(false)} href="#types" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Scams we catch</a>
-              <a onClick={() => setMobileMenuOpen(false)} href="#trust" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Reviews</a>
+              <Link onClick={() => setMobileMenuOpen(false)} href="/reviews" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Reviews</Link>
               <Link onClick={() => setMobileMenuOpen(false)} href="/bot" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Bot API</Link>
               <Link onClick={() => setMobileMenuOpen(false)} href="/pricing" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Pricing</Link>
               <Link onClick={() => setMobileMenuOpen(false)} href="#checker" className="rounded-lg bg-cyan-500 px-3 py-2 font-bold text-white">Check now — free</Link>
@@ -693,7 +646,7 @@ export default function HomePage() {
         <div className="hero-left">
           <div className="fade-in-up inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 chip-glow md:px-4 md:py-2 md:text-sm">
             <span className="pulse-danger h-2 w-2 rounded-full bg-cyan-400" />
-            Trusted by 38,000+ across 47 countries
+            Public beta - text, links, and screenshots
           </div>
 
           <h1 className="font-serif-display fade-in-up mt-5 text-4xl font-black leading-[1] md:mt-6 md:text-6xl lg:text-7xl">
@@ -933,6 +886,10 @@ export default function HomePage() {
 
       <div className="mx-auto w-full max-w-6xl px-4 md:px-6"><div className="section-divider" /></div>
 
+      <section className="mx-auto w-full max-w-6xl px-4 pb-8 pt-6 md:px-6 md:pb-10">
+        <TrustStrip />
+      </section>
+
       {/* LIVE DEMO — moved here from hero aside */}
       <section id="demo" className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 md:px-6 md:pb-14">
         <div className="mb-5 max-w-2xl md:mb-7">
@@ -950,6 +907,205 @@ export default function HomePage() {
       {/* SCAM EXAMPLES — try a sample */}
       <section id="examples" className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
         <ScamExamples onTry={tryExample} />
+      </section>
+
+      <section id="types" className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <ScamTypes />
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <LiveStats />
+      </section>
+
+      <section id="trust" className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <Testimonials />
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <WhyNotChatGPT />
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <ComparisonTable />
+      </section>
+
+      <section id="workspace" className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6 md:pb-14">
+        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="glass-panel rounded-3xl p-5 md:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.22em] text-white/45 md:text-xs">Your case desk</div>
+                <h2 className="mt-2 text-2xl font-black md:text-3xl">History, watchlist, and quick sharing.</h2>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100">
+                <ShieldIcon size={14} />
+                {dbUser ? "Cloud sync on" : "Local-first"}
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/45">
+                  <ScanIcon size={14} />
+                  Checks
+                </div>
+                <div className="mono-readout mt-2 text-2xl font-black text-white">{history.length}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/45">
+                  <AlertIcon size={14} />
+                  Watchlist
+                </div>
+                <div className="mono-readout mt-2 text-2xl font-black text-white">{watchlist.length}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/45">
+                  <StarIcon size={14} />
+                  Access
+                </div>
+                <div className="mt-2 text-sm font-bold text-white">{checksLeft}</div>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-bold text-white">Recent checks</div>
+                <button
+                  type="button"
+                  onClick={clearHistory}
+                  disabled={history.length === 0}
+                  className="rounded-lg border border-white/15 bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-white/65 transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="mt-3 max-h-72 space-y-2 overflow-auto pr-1">
+                {history.length > 0 ? (
+                  history.slice(0, 6).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => applyHistoryItem(item)}
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left transition hover:border-cyan-300/30 hover:bg-white/[0.07]"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="mono-readout text-[10px] text-white/45">{new Date(item.createdAt).toLocaleString()}</span>
+                        <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold text-white/70">
+                          {item.result.level} · {item.result.score}
+                        </span>
+                      </div>
+                      <div className="mt-1 line-clamp-2 text-sm text-white/80">{item.input}</div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/50">
+                    Run a check and it will appear here.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="glass-panel rounded-3xl p-5 md:p-6">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/45 md:text-xs">
+                <GlobeIcon size={14} />
+                Watchlist
+              </div>
+              <div className="mt-2 text-xl font-black">Flag repeat domains, handles, or phrases.</div>
+              <div className="mt-4 flex gap-2">
+                <input
+                  value={watchlistInput}
+                  onChange={(event) => setWatchlistInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") addWatchlistEntry();
+                  }}
+                  maxLength={120}
+                  placeholder="seller handle, domain, wallet, phrase"
+                  className="min-w-0 flex-1 rounded-xl border border-white/12 bg-black/40 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/35 focus:border-cyan-300/50"
+                />
+                <button
+                  type="button"
+                  onClick={addWatchlistEntry}
+                  disabled={!watchlistInput.trim()}
+                  className="rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-black text-white transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="mt-3 flex max-h-36 flex-wrap gap-2 overflow-auto">
+                {watchlist.length > 0 ? (
+                  watchlist.map((entry) => (
+                    <span key={entry} className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] py-1 pl-3 pr-1 text-xs text-white/80">
+                      <span className="mono-readout max-w-[180px] truncate">{entry}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeWatchlistEntry(entry)}
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
+                        aria-label={`Remove ${entry} from watchlist`}
+                      >
+                        <CloseIcon size={12} />
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <div className="text-sm text-white/50">Add terms you want ScamRadar to flag in future checks.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="glass-panel rounded-3xl p-5 md:p-6">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/45 md:text-xs">
+                <CheckIcon size={14} />
+                Account
+              </div>
+              {dbUser ? (
+                <>
+                  <div className="mt-2 text-xl font-black">Signed in as {dbUser.name || dbUser.email.split("@")[0]}</div>
+                  <p className="mt-2 text-sm leading-6 text-white/65">
+                    Your history and watchlist sync to your ScamRadar account on this browser.
+                  </p>
+                  <Link
+                    href="/account"
+                    className="mt-4 inline-flex rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:bg-cyan-500/25"
+                  >
+                    Open account
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="mt-2 text-xl font-black">Keep checks across devices.</div>
+                  <p className="mt-2 text-sm leading-6 text-white/65">
+                    Sign in when you want cloud history, watchlist sync, and Shield plan access.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(true)}
+                    className="mt-4 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-black text-white transition hover:bg-cyan-400"
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="glass-panel rounded-3xl p-5 md:p-6">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-white/45 md:text-xs">Share ScamRadar</div>
+              <div className="mt-2 text-xl font-black">Send the checker before someone pays.</div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href={telegramShareLink} target="_blank" rel="noreferrer" className="rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.12]">
+                  Telegram
+                </a>
+                <a href={whatsappShareLink} target="_blank" rel="noreferrer" className="rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.12]">
+                  WhatsApp
+                </a>
+                <Link href="/bot" className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
+                  Bot API
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* HOW IT WORKS — compact 3-step */}
@@ -985,8 +1141,8 @@ export default function HomePage() {
           {[
             ["How accurate is the score?", "Scores combine rule-based signals, URL/marketplace extraction, image analysis, and AI interpretation. Treat high-risk results as a strong warning. False-positive rate sits under 4% in human review."],
             ["Can I check screenshots from mobile?", "Yes — upload from gallery or capture from camera on iOS and Android directly in the browser. No install required."],
-            ["Is my data private?", "We don't sell or share analysis data. Local-first storage is the default; cloud sync is opt-in via magic link."],
-            ["What happens after my free check?", "Unlock more with a $0.99 single pass, Shield Monthly ($4.99/mo with 3-day free trial), or Shield Yearly ($29.99/yr — 50% off). Cancel anytime."],
+            ["Is my data private?", "We don't sell or share analysis data. Local-first storage is the default; cloud sync is opt-in when you create an account."],
+            ["What happens after my free checks?", "Unlock more with a $0.99 single pass, Shield Monthly ($4.99/mo with 3-day free trial), or Shield Yearly ($29.99/yr — 50% off). Cancel anytime."],
             ["Do you offer a bot or API?", "Yes — connect Telegram or WhatsApp bots via our Bot API. See the Bot API docs for details."],
           ].map(([q, a]) => (
             <details key={q} className="group rounded-xl border border-white/10 bg-black/25 p-3.5 transition hover:border-white/20 md:p-4">
@@ -1023,16 +1179,16 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-3 gap-2 md:gap-3 lg:grid-cols-1">
               <div className="rounded-2xl border border-white/10 bg-black/35 p-3 md:p-4">
-                <div className="mono-readout text-xl font-black text-white md:text-3xl">$47M+</div>
-                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Losses prevented</div>
+                <div className="mono-readout text-xl font-black text-white md:text-3xl">2</div>
+                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Free checks</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/35 p-3 md:p-4">
-                <div className="mono-readout text-xl font-black text-white md:text-3xl">1.8s</div>
-                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Avg response</div>
+                <div className="mono-readout text-xl font-black text-white md:text-3xl">8MB</div>
+                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Image upload</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/35 p-3 md:p-4">
-                <div className="mono-readout text-xl font-black text-white md:text-3xl">47</div>
-                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Countries</div>
+                <div className="mono-readout text-xl font-black text-white md:text-3xl">3</div>
+                <div className="mt-0.5 text-[11px] text-white/65 md:text-xs">Input types</div>
               </div>
             </div>
           </div>
@@ -1042,9 +1198,10 @@ export default function HomePage() {
       <div className="fixed bottom-4 left-4 right-4 z-30 md:hidden">
         <a
           href="#checker"
-          className="flex items-center justify-center rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-black text-white shadow-[0_20px_60px_-15px_rgba(255,54,71,0.75)]"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-black text-white shadow-[0_20px_60px_-15px_rgba(34,211,238,0.75)]"
         >
-          ⚡ Run a free check
+          <BoltIcon size={16} />
+          Run a free check
         </a>
       </div>
 
@@ -1054,9 +1211,7 @@ export default function HomePage() {
         show={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={(user) => {
-          setDbUser(user);
-          if (user.premium) setPremium(true);
-          if (user.credits > 0) setCredits(user.credits);
+          hydrateDbUser(user);
         }}
       />
     </main>

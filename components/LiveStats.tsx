@@ -10,15 +10,13 @@ type Stat = {
 };
 
 const STATS: Stat[] = [
-  { label: "Messages scanned", target: 1.28, prefix: "", suffix: "M+" },
-  { label: "Losses prevented", target: 47, prefix: "$", suffix: "M" },
-  { label: "Active watchlists", target: 38420 },
-  { label: "Avg. response time", target: 1.8, suffix: "s" },
+  { label: "Free checks included", target: 2 },
+  { label: "Input types", target: 3 },
+  { label: "Max image upload", target: 8, suffix: "MB" },
+  { label: "Launch safeguards", target: 4 },
 ];
 
-function formatNumber(value: number, stat: Stat): string {
-  if (stat.suffix === "s" || stat.suffix === "M+" || stat.suffix === "M") return value.toFixed(2).replace(/\.?0+$/, "");
-  if (stat.label === "Losses prevented") return Math.round(value).toString();
+function formatNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
 
@@ -52,7 +50,7 @@ function StatTile({ stat, active }: { stat: Stat; active: boolean }) {
       <div className="text-xs uppercase tracking-[0.22em] text-white/50">{stat.label}</div>
       <div className="mono-readout mt-3 text-4xl font-black text-white md:text-5xl">
         {stat.prefix || ""}
-        {formatNumber(value, stat)}
+        {formatNumber(value)}
         {stat.suffix || ""}
       </div>
       <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/5">

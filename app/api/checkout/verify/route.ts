@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import stripe from '@/lib/stripe';
+import { applyCheckoutSession } from '@/lib/billing';
+import { ANON_USAGE_COOKIE } from '@/lib/usage';
 
 /**
  * Verifies a Stripe checkout session and returns premium status and credit count.
@@ -16,27 +18,29 @@ export async function GET(req: NextRequest) {
       expand: ['line_items'] as any,
     });
 
-    if (!session || session.payment_status !== 'paid') {
+    const paymentComplete =
+      session?.payment_status === 'paid' ||
+      (session?.mode === 'subscription' && session?.payment_status === 'no_payment_required');
+
+    if (!session || !paymentComplete) {
       return NextResponse.json({ error: 'Session not paid' }, { status: 400 });
     }
 
-    let premium = false;
-    let credits = 0;
+    const applied = await applyCheckoutSession(session);
 
-    if (session.mode === 'subscription') {
-      premium = true;
-    } else {
-      // Determine credits based on purchased price ID
-      const line = (session as any).line_items?.data?.[0];
-      const priceId: string | undefined = line?.price?.id;
-      if (priceId === process.env.STRIPE_PRICE_ID_SINGLE) {
-        credits = 1;
-      } else if (priceId === process.env.STRIPE_PRICE_ID_PACK) {
-        credits = 5;
-      }
+    const premium = session.mode === 'subscription';
+    const credits = premium ? 0 : applied.planType === 'single' ? 1 : 0;
+    const response = NextResponse.json({ premium, credits, applied });
+    if (applied.anonymousKey) {
+      response.cookies.set(ANON_USAGE_COOKIE, applied.anonymousKey, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 365 * 24 * 60 * 60,
+        path: '/',
+      });
     }
-
-    return NextResponse.json({ premium, credits });
+    return response;
   } catch (err) {
     console.error('Error verifying checkout session', err);
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });

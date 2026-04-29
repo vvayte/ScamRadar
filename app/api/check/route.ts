@@ -4,7 +4,14 @@ import openai from "@/lib/openaiClient";
 import { inspectListingUrlsFromText, type UrlInspectionResult } from "@/lib/urlInspector";
 import { inspectImageForScam, type ImageInspectionResult } from "@/lib/imageInspector";
 import { consumeRateLimit, getClientIp } from "@/lib/requestGuard";
-import { getCommunityRiskHintsForUrls } from "@/lib/platformDataStore";
+import { getCommunityRiskHintsForUrls } from "@/lib/communityIntel";
+import {
+  applySuccessfulCheck,
+  attachAnonymousCookie,
+  canRunCheck,
+  resolveUsageSubject,
+  usageSnapshot,
+} from "@/lib/usage";
 
 export const runtime = "nodejs";
 
@@ -176,6 +183,20 @@ export async function POST(req: NextRequest) {
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
 
+    const usageSubject = await resolveUsageSubject(req);
+    if (!canRunCheck(usageSubject)) {
+      const response = NextResponse.json(
+        {
+          error: "Your free checks are used. Upgrade Shield or buy a one-off check to continue.",
+          code: "PAYWALL_REQUIRED",
+          usage: usageSnapshot(usageSubject),
+        },
+        { status: 402 }
+      );
+      attachAnonymousCookie(response, usageSubject);
+      return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
+    }
+
     const { text, imageFile } = await parseRequestInput(req);
     const trimmedText = text.replace(/\u0000/g, "").trim();
 
@@ -213,7 +234,7 @@ export async function POST(req: NextRequest) {
       ? await inspectListingUrlsFromText(trimmedText)
       : emptyUrlInspection();
 
-    const communityHints = getCommunityRiskHintsForUrls(urlInspection.urls);
+    const communityHints = await getCommunityRiskHintsForUrls(urlInspection.urls);
     if (communityHints.length > 0) {
       urlInspection = withExtraUrlHints(urlInspection, communityHints);
     }
@@ -246,19 +267,27 @@ export async function POST(req: NextRequest) {
       }
 
       const mergedResult = mergeImageSignals(heuristic, imageInspection);
-      return attachRateHeaders(
-        NextResponse.json(mergedResult),
-        rateDecision.remaining,
-        rateDecision.retryAfterSeconds
-      );
+      const usage = await applySuccessfulCheck({
+        subject: usageSubject,
+        input: analysisInput || trimmedText || "[image upload]",
+        result: mergedResult,
+        hasImage: true,
+      });
+      const response = NextResponse.json({ ...mergedResult, usage });
+      attachAnonymousCookie(response, usageSubject);
+      return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
 
     if (heuristic.skipAI) {
-      return attachRateHeaders(
-        NextResponse.json(heuristic),
-        rateDecision.remaining,
-        rateDecision.retryAfterSeconds
-      );
+      const usage = await applySuccessfulCheck({
+        subject: usageSubject,
+        input: trimmedText,
+        result: heuristic,
+        hasImage: false,
+      });
+      const response = NextResponse.json({ ...heuristic, usage });
+      attachAnonymousCookie(response, usageSubject);
+      return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
 
     const systemPrompt =
@@ -280,11 +309,15 @@ export async function POST(req: NextRequest) {
     try {
       payload = JSON.parse(completion.choices[0].message.content);
     } catch {
-      return attachRateHeaders(
-        NextResponse.json(heuristic),
-        rateDecision.remaining,
-        rateDecision.retryAfterSeconds
-      );
+      const usage = await applySuccessfulCheck({
+        subject: usageSubject,
+        input: trimmedText,
+        result: heuristic,
+        hasImage: false,
+      });
+      const response = NextResponse.json({ ...heuristic, usage });
+      attachAnonymousCookie(response, usageSubject);
+      return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
 
     const score = Math.min(100, Math.max(0, Number(payload.score) || 0));
@@ -300,17 +333,22 @@ export async function POST(req: NextRequest) {
       : heuristic.reasons;
     const advice = typeof payload.advice === "string" ? payload.advice : heuristic.advice;
 
-    return attachRateHeaders(
-      NextResponse.json({
-        score,
-        level,
-        reasons,
-        advice,
-        skipAI: false,
-      }),
-      rateDecision.remaining,
-      rateDecision.retryAfterSeconds
-    );
+    const result = {
+      score,
+      level,
+      reasons,
+      advice,
+      skipAI: false,
+    };
+    const usage = await applySuccessfulCheck({
+      subject: usageSubject,
+      input: trimmedText,
+      result,
+      hasImage: false,
+    });
+    const response = NextResponse.json({ ...result, usage });
+    attachAnonymousCookie(response, usageSubject);
+    return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });

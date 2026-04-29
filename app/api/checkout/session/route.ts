@@ -1,31 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import stripe from '@/lib/stripe';
-
-type PlanType = 'single' | 'monthly' | 'yearly' | 'flash';
-
-const PLAN_CONFIG: Record<PlanType, { envKey: string; mode: 'payment' | 'subscription'; trialDays?: number }> = {
-  single: { envKey: 'STRIPE_PRICE_ID_SINGLE', mode: 'payment' },
-  monthly: { envKey: 'STRIPE_PRICE_ID_MONTHLY', mode: 'subscription', trialDays: 3 },
-  yearly: { envKey: 'STRIPE_PRICE_ID_YEARLY', mode: 'subscription', trialDays: 3 },
-  flash: { envKey: 'STRIPE_PRICE_ID_FLASH', mode: 'subscription' },
-};
+import db from '@/lib/db';
+import { PLAN_CONFIG, isPlanType } from '@/lib/billing';
+import {
+  ANON_USAGE_COOKIE,
+  attachAnonymousCookie,
+  getSessionUser,
+  resolveUsageSubject,
+} from '@/lib/usage';
 
 export async function POST(req: NextRequest) {
   try {
     const { type } = (await req.json()) as { type?: string };
-    if (!type || !(type in PLAN_CONFIG)) {
+    if (!isPlanType(type)) {
       return NextResponse.json({ error: 'Invalid purchase type' }, { status: 400 });
     }
 
-    const config = PLAN_CONFIG[type as PlanType];
+    const config = PLAN_CONFIG[type];
     const priceId = process.env[config.envKey];
 
     if (!priceId) {
       return NextResponse.json({ error: `Price ID not configured for ${type}` }, { status: 500 });
     }
 
-    const successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${process.env.NEXT_PUBLIC_APP_URL}/cancel`;
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/$/, '');
+    const successUrl = `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${appUrl}/cancel`;
+    const user = await getSessionUser(req);
+    const subject = user ? null : await resolveUsageSubject(req);
+    const anonymousKey = subject?.kind === 'anonymous' ? subject.anonymousKey : undefined;
 
     const sessionParams: any = {
       mode: config.mode,
@@ -33,14 +36,52 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
+      metadata: {
+        planType: type,
+        userId: user?.id || '',
+        anonymousKey: anonymousKey || '',
+      },
+      client_reference_id: user?.id || anonymousKey,
     };
+
+    if (user) {
+      const fullUser = await db.user.findUnique({ where: { id: user.id } });
+      if (fullUser?.stripeCustomerId) sessionParams.customer = fullUser.stripeCustomerId;
+      else sessionParams.customer_email = fullUser?.email || user.email;
+    }
 
     if (config.mode === 'subscription' && config.trialDays) {
       sessionParams.subscription_data = { trial_period_days: config.trialDays };
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
-    return NextResponse.json({ url: session.url });
+
+    await db.stripeCheckoutSession.upsert({
+      where: { id: session.id },
+      create: {
+        id: session.id,
+        planType: type,
+        mode: config.mode,
+        priceId,
+        userId: user?.id || null,
+        anonymousKey: anonymousKey || null,
+      },
+      update: {
+        planType: type,
+        mode: config.mode,
+        priceId,
+        userId: user?.id || null,
+        anonymousKey: anonymousKey || null,
+      },
+    });
+
+    const response = NextResponse.json({ url: session.url });
+    if (subject) {
+      attachAnonymousCookie(response, subject);
+    } else if (req.cookies.get(ANON_USAGE_COOKIE)?.value) {
+      response.cookies.set(ANON_USAGE_COOKIE, '', { maxAge: 0, path: '/' });
+    }
+    return response;
   } catch (err) {
     console.error('Error creating checkout session', err);
     return NextResponse.json({ error: 'Could not create session' }, { status: 500 });

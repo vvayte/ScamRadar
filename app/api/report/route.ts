@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit, getClientIp } from "@/lib/requestGuard";
-import { submitThreatReport } from "@/lib/platformDataStore";
+import { submitThreatReport } from "@/lib/communityIntel";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Indicator value is required." }, { status: 400 });
     }
 
-    const report = submitThreatReport({
+    const report = await submitThreatReport({
       indicatorType: body?.indicatorType,
       indicatorValue,
       platform: String(body?.platform || ""),

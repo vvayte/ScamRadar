@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { BoltIcon, CheckIcon, CloseIcon, ShieldIcon } from "./Icons";
 
 type PlanType = "single" | "monthly" | "yearly";
 
@@ -45,8 +46,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
         return;
       }
       setError(data?.error || "Could not start checkout. Please try again.");
-    } catch (e) {
-      console.error("Failed to start checkout", e);
+    } catch {
       setError("Could not start checkout. Please try again.");
     } finally {
       setPending(null);
@@ -69,7 +69,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
           aria-label="Close paywall"
           className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white/70 transition hover:bg-white/10 hover:text-white"
         >
-          ✕
+          <CloseIcon size={16} />
         </button>
 
         <div className="relative border-b border-white/10 bg-gradient-to-r from-cyan-500/20 via-cyan-500/8 to-transparent p-6 md:p-8">
@@ -79,18 +79,17 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
           </div>
 
           <h2 id="paywall-title" className="max-w-xl text-3xl font-black leading-tight text-white md:text-4xl">
-            You&apos;ve used your free check — keep going with Shield
+            You have used your free checks. Keep going with Shield.
           </h2>
 
           <p className="mt-4 max-w-xl text-base leading-7 text-white/75">
             Continue with unlimited checks, full forensic breakdown, and case-aware follow-up. Start with a 3-day free
-            trial — cancel before it ends and pay nothing.
+            trial, cancel before it ends, and pay nothing.
           </p>
 
-          <blockquote className="mt-5 max-w-xl rounded-2xl border border-white/10 bg-black/25 p-4 text-sm italic text-white/75">
-            &ldquo;Shield saved me from wiring $1,240 to a fake eBay buyer. No-brainer.&rdquo;
-            <footer className="not-italic mt-2 text-xs text-white/55">— Marcus R., eBay seller</footer>
-          </blockquote>
+          <div className="mt-5 max-w-xl rounded-2xl border border-white/10 bg-black/25 p-4 text-sm text-white/75">
+            Payments are handled by Stripe. Your unlock is saved server-side, so it can survive refreshes and new tabs.
+          </div>
         </div>
 
         <div className="relative grid gap-4 p-6 md:grid-cols-3 md:p-8">
@@ -140,7 +139,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
               <span className="text-sm font-semibold text-white/55">/yr</span>
             </div>
             <div className="mt-2 text-sm text-white/70">
-              <span className="line-through text-white/40">$59.88</span> · save half. 3-day trial.
+              <span className="line-through text-white/40">$59.88</span> save half. 3-day trial.
             </div>
             <div className="mt-5 rounded-2xl bg-cyan-500/85 px-4 py-3 text-center font-bold text-white">
               {pending === "yearly" ? "Redirecting..." : "Start free trial"}
@@ -150,13 +149,13 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
 
         <div className="relative grid gap-3 border-t border-white/10 px-6 py-5 text-sm md:grid-cols-3 md:px-8">
           <div className="flex items-center gap-2 text-white/70">
-            <span className="text-emerald-400">🔒</span> Stripe-secured payments
+            <ShieldIcon size={16} className="text-emerald-400" /> Stripe-secured payments
           </div>
           <div className="flex items-center gap-2 text-white/70">
-            <span className="text-emerald-400">↺</span> Cancel anytime
+            <CheckIcon size={16} className="text-emerald-400" /> Cancel anytime
           </div>
           <div className="flex items-center gap-2 text-white/70">
-            <span className="text-emerald-400">⚡</span> Instant unlock
+            <BoltIcon size={16} className="text-emerald-400" /> Instant unlock
           </div>
         </div>
 
@@ -173,7 +172,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
               View full pricing
             </Link>
             <button onClick={onClose} className="text-white/55 hover:text-white">
-              Continue with limited result
+              Maybe later
             </button>
           </div>
         </div>

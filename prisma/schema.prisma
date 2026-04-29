@@ -8,17 +8,20 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  name         String?
-  premium      Boolean   @default(false)
-  credits      Int       @default(0)
-  count        Int       @default(0)
-  createdAt    DateTime  @default(now())
-  sessions     Session[]
-  history      HistoryItem[]
-  watchlist    WatchlistItem[]
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  passwordHash         String
+  name                 String?
+  premium              Boolean   @default(false)
+  credits              Int       @default(0)
+  count                Int       @default(0)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+  createdAt            DateTime  @default(now())
+  sessions             Session[]
+  history              HistoryItem[]
+  watchlist            WatchlistItem[]
 }
 
 model Session {
@@ -63,4 +66,51 @@ model EmailVerificationCode {
   expiresAt    DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model AnonymousUsage {
+  id                   String   @id @default(cuid())
+  key                  String   @unique
+  premium              Boolean  @default(false)
+  credits              Int      @default(0)
+  count                Int      @default(0)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model StripeCheckoutSession {
+  id           String   @id
+  planType     String
+  mode         String
+  priceId      String
+  userId       String?
+  anonymousKey String?
+  applied      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StripeEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+}
+
+model ThreatReport {
+  id             String   @id @default(cuid())
+  indicatorType  String
+  indicatorValue String
+  platform       String?
+  notes          String?
+  reporterEmail  String?
+  createdAt      DateTime @default(now())
+}
+
+model NewsletterSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }

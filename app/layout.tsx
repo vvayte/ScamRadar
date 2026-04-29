@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   })(),
   title: "ScamRadar | AI Scam Checker for Messages, Links, and Listings",
   description:
-    "Paste any suspicious message, URL, or screenshot. ScamRadar returns a risk score, top reasons, and exactly what to do next — in under 2 seconds.",
+    "Paste any suspicious message, URL, or screenshot. ScamRadar returns a risk score, top reasons, and a clear next step before you pay.",
   keywords: [
     "scam checker",
     "phishing detector",
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     url: "/",
     siteName: "ScamRadar",
     type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "ScamRadar — AI scam checker" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "ScamRadar AI scam checker" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -94,11 +94,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             description:
               "AI-powered scam checker for marketplace messages, links, and screenshots.",
             offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-            aggregateRating: {
-              "@type": "AggregateRating",
-              ratingValue: "4.8",
-              ratingCount: "2184",
-            },
           })}
         </Script>
 
@@ -183,7 +178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <span className="inline-flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-emerald-400" /> All systems operational
                   </span>
-                  <span>SOC 2 roadmap Q3 2026</span>
+                  <span>Security contacts published</span>
                   <span>GDPR-aware</span>
                 </div>
               </div>

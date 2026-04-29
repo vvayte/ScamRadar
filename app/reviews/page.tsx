@@ -2,86 +2,79 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Customer Reviews | ScamRadar",
+  title: "Scam Review Board | ScamRadar",
   description:
-    "Read ScamRadar customer stories from marketplace buyers, sellers, parents, freelancers, and small businesses who checked suspicious messages before paying.",
+    "Review common marketplace, rental, job, payment, and support scam scenarios before you pay or click.",
 };
 
-type Review = {
+type ReviewScenario = {
   initials: string;
-  name: string;
-  role: string;
-  location: string;
-  quote: string;
-  result: string;
+  title: string;
+  context: string;
+  description: string;
+  signal: string;
   score: number;
   gradient: string;
 };
 
-const REVIEWS: Review[] = [
+const SCENARIOS: ReviewScenario[] = [
   {
-    initials: "MR",
-    name: "Marcus R.",
-    role: "eBay seller",
-    location: "Austin, TX",
-    quote:
-      "A buyer tried to move payment to Zelle and sent a fake shipping explanation. ScamRadar flagged the pattern before I replied.",
-    result: "$1,240 chargeback avoided",
+    initials: "MP",
+    title: "Marketplace payment redirect",
+    context: "Buyer or seller DM",
+    description:
+      "The message asks to leave the marketplace, pay by instant transfer, and trust a shipping story that cannot be verified on-platform.",
+    signal: "Off-platform payment",
     score: 94,
     gradient: "from-cyan-500/25 via-black/20 to-emerald-500/10",
   },
   {
-    initials: "AK",
-    name: "Anna K.",
-    role: "Marketplace buyer",
-    location: "Manchester, UK",
-    quote:
-      "The courier-fee message looked normal until the tool explained the off-platform payment and pressure tactics.",
-    result: "Fake courier fee blocked",
+    initials: "CR",
+    title: "Courier fee prepayment",
+    context: "Local pickup listing",
+    description:
+      "A small delivery or insurance fee is used to send the victim to a fake escrow page or collect payment details.",
+    signal: "Courier prepayment",
     score: 91,
     gradient: "from-amber-400/25 via-black/20 to-cyan-500/10",
   },
   {
-    initials: "LT",
-    name: "Linh T.",
-    role: "Small business owner",
-    location: "San Jose, CA",
-    quote:
-      "We almost shipped an order after a forged payment screenshot. The report pointed out the lookalike domain and receipt mismatch.",
-    result: "$3,400 order protected",
+    initials: "RC",
+    title: "Forged receipt screenshot",
+    context: "Small business order",
+    description:
+      "The receipt looks convincing, but the domain, transaction reference, and settlement details do not line up.",
+    signal: "Receipt mismatch",
     score: 88,
     gradient: "from-emerald-400/20 via-black/20 to-cyan-500/10",
   },
   {
-    initials: "SO",
-    name: "Sasha O.",
-    role: "Parent",
-    location: "Toronto, CA",
-    quote:
-      "My teenager pasted a gaming support chat before buying gift cards. The answer was clear enough that he understood the scam himself.",
-    result: "$200 gift card scam stopped",
+    initials: "GC",
+    title: "Gift-card support chat",
+    context: "Gaming or account support",
+    description:
+      "The chat pressures the user to buy codes quickly, keep the request secret, and ignore normal support channels.",
+    signal: "Gift-card demand",
     score: 96,
     gradient: "from-rose-400/20 via-black/20 to-cyan-500/10",
   },
   {
-    initials: "JW",
-    name: "Jamie W.",
-    role: "Student renter",
-    location: "Dublin, IE",
-    quote:
-      "A rental deposit request came through Instagram. ScamRadar caught the urgency, the payment method, and the fake identity story.",
-    result: "$850 deposit saved",
+    initials: "RD",
+    title: "Rental deposit rush",
+    context: "Apartment inquiry",
+    description:
+      "The listing asks for a deposit before a viewing and leans on urgency to stop the user from checking identity or ownership.",
+    signal: "Urgent deposit",
     score: 93,
     gradient: "from-cyan-500/20 via-black/20 to-amber-400/10",
   },
   {
-    initials: "DP",
-    name: "David P.",
-    role: "Freelance recruiter",
-    location: "Berlin, DE",
-    quote:
-      "I screen job offers for clients. Crypto-deposit onboarding scams are much easier to explain when the risk signals are listed clearly.",
-    result: "12 clients protected",
+    initials: "JO",
+    title: "Job onboarding deposit",
+    context: "Remote work offer",
+    description:
+      "The offer sounds professional, then asks for crypto, gift cards, or a refundable equipment deposit before real onboarding.",
+    signal: "Deposit request",
     score: 89,
     gradient: "from-indigo-400/20 via-black/20 to-cyan-500/10",
   },
@@ -94,14 +87,14 @@ export default function ReviewsPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="max-w-3xl">
             <div className="inline-flex rounded-full border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100">
-              Customer proof
+              Scam review board
             </div>
             <h1 className="mt-4 text-4xl font-black leading-tight md:text-6xl">
-              Real people checking before they pay
+              Review common scam patterns before you pay
             </h1>
             <p className="mt-4 text-lg leading-8 text-white/72">
-              Stories from buyers, sellers, parents, renters, and small teams using ScamRadar when a
-              message feels wrong but the scam is not obvious yet.
+              These are sample scenarios based on common public scam patterns. Paste your own message or screenshot to get
+              a case-specific score and next step.
             </p>
           </div>
           <Link
@@ -114,9 +107,9 @@ export default function ReviewsPage() {
 
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {[
-            ["4.8/5", "Average rating"],
-            ["2,184", "Community reviews"],
-            ["$47M+", "Reported losses prevented"],
+            ["2", "Free checks included"],
+            ["3", "Input types"],
+            ["8MB", "Max image upload"],
           ].map(([value, label]) => (
             <div key={label} className="rounded-3xl border border-white/10 bg-black/30 p-6">
               <div className="mono-readout text-4xl font-black text-white">{value}</div>
@@ -126,39 +119,32 @@ export default function ReviewsPage() {
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {REVIEWS.map((review, index) => (
+          {SCENARIOS.map((item, index) => (
             <article
-              key={review.name}
+              key={item.title}
               style={{ animationDelay: `${index * 70}ms` }}
-              className={`fade-in-up hover-lift relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br ${review.gradient} p-6`}
+              className={`fade-in-up hover-lift relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br ${item.gradient} p-6`}
             >
               <div className="absolute inset-0 bg-black/30" />
               <div className="relative">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm font-black">
-                    {review.initials}
+                    {item.initials}
                   </div>
                   <div>
-                    <div className="font-bold">{review.name}</div>
-                    <div className="text-xs text-white/55">
-                      {review.role} &middot; {review.location}
-                    </div>
+                    <div className="font-bold">{item.title}</div>
+                    <div className="text-xs text-white/55">{item.context}</div>
                   </div>
                 </div>
 
                 <div className="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-black/35 px-4 py-3">
-                  <span className="text-xs uppercase tracking-[0.18em] text-white/45">Risk score</span>
-                  <span className="mono-readout text-2xl font-black text-cyan-100">{review.score}</span>
+                  <span className="text-xs uppercase tracking-[0.18em] text-white/45">Example risk score</span>
+                  <span className="mono-readout text-2xl font-black text-cyan-100">{item.score}</span>
                 </div>
 
-                <div className="mt-4 flex items-center gap-1 text-amber-300" aria-label="5 star review">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i}>*</span>
-                  ))}
-                </div>
-                <p className="mt-3 text-sm leading-6 text-white/85">&quot;{review.quote}&quot;</p>
+                <p className="mt-4 text-sm leading-6 text-white/85">{item.description}</p>
                 <div className="mono-readout mt-5 inline-flex rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
-                  {review.result}
+                  {item.signal}
                 </div>
               </div>
             </article>

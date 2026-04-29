@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { BoltIcon, CheckIcon, ShieldIcon, StarIcon } from "@/components/Icons";
 
 type PlanId = "single" | "monthly" | "yearly";
 
@@ -21,8 +22,7 @@ export default function PricingPage() {
       const data = await res.json();
       if (data?.url) { window.location.href = data.url; return; }
       setError(data?.error || "Unable to initialize checkout. Please try again.");
-    } catch (err) {
-      console.error("Unable to initialize checkout", err);
+    } catch {
       setError("Unable to initialize checkout. Please try again.");
     } finally {
       setPending(null);
@@ -53,8 +53,8 @@ export default function PricingPage() {
 
         {/* Yearly savings banner */}
         <div className="mt-10 flex items-center gap-4 rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent px-5 py-4">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-400/20 text-xl">
-            🔥
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-400/20 text-amber-200">
+            <BoltIcon size={22} />
           </div>
           <div className="min-w-0">
             <div className="text-sm font-black text-amber-200">Limited-time offer — save 50% with yearly billing</div>
@@ -91,7 +91,7 @@ export default function PricingPage() {
             <div className="mt-6 space-y-2.5">
               {["1 full scam check", "Exact score + full reasons", "Action advice included"].map((p) => (
                 <div key={p} className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/20 px-4 py-3 text-sm text-white/80">
-                  <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-cyan-400" />
+                  <CheckIcon size={14} className="flex-shrink-0 text-cyan-300" />
                   {p}
                 </div>
               ))}
@@ -133,7 +133,7 @@ export default function PricingPage() {
             <div className="mt-6 space-y-2.5">
               {["Unlimited full checks", "Forensic report unlocked", "Case-aware follow-up chat", "3-day free trial"].map((p) => (
                 <div key={p} className="flex items-center gap-3 rounded-xl border border-cyan-300/15 bg-cyan-500/10 px-4 py-3 text-sm text-white/85">
-                  <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-cyan-400" />
+                  <CheckIcon size={14} className="flex-shrink-0 text-cyan-300" />
                   {p}
                 </div>
               ))}
@@ -186,7 +186,7 @@ export default function PricingPage() {
               <div className="mt-6 space-y-2.5">
                 {["Everything in Monthly", "Save 50% vs monthly ($59.88)", "Priority support", "3-day free trial"].map((p) => (
                   <div key={p} className="flex items-center gap-3 rounded-xl border border-amber-400/15 bg-amber-500/8 px-4 py-3 text-sm text-white/85">
-                    <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-400" />
+                    <CheckIcon size={14} className="flex-shrink-0 text-amber-300" />
                     {p}
                   </div>
                 ))}
@@ -206,12 +206,12 @@ export default function PricingPage() {
         {/* Value comparison row */}
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {[
-            { icon: "☕", label: "Monthly plan", value: "$0.16/day", note: "Less than 1/10 of a coffee" },
-            { icon: "🔥", label: "Yearly plan", value: "$0.08/day", note: "Half the monthly price" },
-            { icon: "🛡️", label: "Average scam loss", value: "$1,200+", note: "One check could save thousands" },
+            { icon: <StarIcon size={24} />, label: "Monthly plan", value: "$0.16/day", note: "Less than 1/10 of a coffee" },
+            { icon: <BoltIcon size={24} />, label: "Yearly plan", value: "$0.08/day", note: "Half the monthly price" },
+            { icon: <ShieldIcon size={24} />, label: "Single check", value: "$0.99", note: "No subscription needed" },
           ].map((stat) => (
             <div key={stat.label} className="glass-panel rounded-2xl p-5 text-center">
-              <div className="text-2xl">{stat.icon}</div>
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 text-cyan-200">{stat.icon}</div>
               <div className="mt-2 text-xs uppercase tracking-[0.2em] text-white/45">{stat.label}</div>
               <div className="mono-readout mt-1 text-2xl font-black text-white">{stat.value}</div>
               <div className="mt-1 text-xs text-white/50">{stat.note}</div>

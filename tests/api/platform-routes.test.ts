@@ -40,6 +40,9 @@ vi.mock('@/lib/platformDataStore', () => ({
   getOrCreateUserProfile: getOrCreateUserProfileMock,
   getSessionEmail: getSessionEmailMock,
   syncUserProfile: syncUserProfileMock,
+}));
+
+vi.mock('@/lib/communityIntel', () => ({
   submitThreatReport: submitThreatReportMock,
 }));
 
