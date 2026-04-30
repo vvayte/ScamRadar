@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     const urlInspection = await inspectListingUrlsFromText(text);
+    urlInspection.submittedText = text;
     const combined = [
       text,
       urlInspection.extractedText,
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
         {
           role: "system",
           content:
-            'Return ONLY JSON with: "score" (0-100), "level" (Low|Medium|High), "reasons" (array up to 3), "advice" (short sentence). Do not mark normal known marketplace or product URLs as High Risk unless there is concrete scam evidence such as a clone domain, off-platform payment/contact, high-risk payment method, sensitive-info request, or community reports. Do not use vague unsupported reasons like unsolicited link, potential fake product, or lack of product detail.',
+            'Return ONLY JSON with: "score" (0-100), "level" (Low|Medium|High), "reasons" (array up to 3), "advice" (short sentence). Do not mark normal known marketplace or product URLs as High Risk unless there is concrete scam evidence such as a clone domain, off-platform payment/contact, high-risk payment method, sensitive-info request, or community reports. If the user says they already received the item and only paid after delivery, treat that as low risk unless there is separate evidence of fraud. Do not use vague unsupported reasons like unsolicited link, potential fake product, or lack of product detail.',
         },
         {
           role: "user",

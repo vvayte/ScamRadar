@@ -9,6 +9,7 @@ export type RiskResultShape = {
 };
 
 export type UrlSignalContext = {
+  submittedText?: string;
   urls?: string[];
   riskHints?: string[];
   fetchErrors?: string[];
@@ -26,6 +27,8 @@ const TRUSTED_MARKETPLACE_LOW_ADVICE =
   "This looks like a normal marketplace link. Use the official checkout and verify seller details before paying.";
 const TRUSTED_MARKETPLACE_MEDIUM_ADVICE =
   "Use the official marketplace checkout and avoid off-platform payment or contact requests.";
+const COMPLETED_TRANSACTION_ADVICE =
+  "This sounds low risk: receiving the item before paying is generally safer. Keep receipts and payment records.";
 
 const HARD_EVIDENCE_PATTERNS = [
   /clone domain/i,
@@ -67,6 +70,30 @@ const UNSUPPORTED_MARKETPLACE_REASON_PATTERNS = [
   /generic product/i,
 ];
 
+const COMPLETED_TRANSACTION_PATTERNS = [
+  /я\s+(?:уже\s+)?получил[аи]?\s+товар/i,
+  /товар\s+(?:уже\s+)?(?:получен|пришел|приш[её]л|дош[её]л)/i,
+  /вс[её]\s+прошло\s+(?:хорошо|прекрасно|нормально|отлично)/i,
+  /товар\s+себя\s+оправдал/i,
+  /(?:оплатил[аи]?|скинул[аи]?\s+деньги|заплатил[аи]?)\s+(?:уже\s+)?(?:после|потом)/i,
+  /(?:после|потом)\s+(?:получения|того как получил[аи]?)\s+(?:товара\s+)?(?:оплатил[аи]?|заплатил[аи]?|скинул[аи]?\s+деньги)/i,
+  /i\s+(?:already\s+)?received\s+(?:the\s+)?(?:item|product|goods)/i,
+  /(?:item|product|goods)\s+(?:was\s+)?(?:delivered|received)/i,
+  /everything\s+went\s+(?:well|great|fine)/i,
+  /paid\s+after\s+(?:receiving|delivery)/i,
+];
+
+const UNRESOLVED_TRANSACTION_PROBLEM_PATTERNS = [
+  /не\s+получил[аи]?\s+товар/i,
+  /товар\s+не\s+(?:пришел|приш[её]л|дош[её]л|получен)/i,
+  /деньги\s+скинул[аи]?.{0,80}(?:товар\s+не|не\s+получил)/i,
+  /(?:обманули|кинули|пропал[аи]?|заблокировал[аи]?|возврат|спор)/i,
+  /never\s+received\s+(?:the\s+)?(?:item|product|goods)/i,
+  /(?:item|product|goods)\s+never\s+(?:arrived|came)/i,
+  /paid.{0,80}(?:did not|didn't|never)\s+receive/i,
+  /scammed|blocked|dispute|refund/i,
+];
+
 function asStringArray(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
   return values.map((value) => String(value || "").trim()).filter(Boolean);
@@ -98,6 +125,12 @@ function isUnsupportedMarketplaceReason(reason: string): boolean {
   return UNSUPPORTED_MARKETPLACE_REASON_PATTERNS.some((pattern) => pattern.test(reason));
 }
 
+function hasCompletedTransactionSignal(text: string): boolean {
+  if (!text.trim()) return false;
+  if (UNRESOLVED_TRANSACTION_PROBLEM_PATTERNS.some((pattern) => pattern.test(text))) return false;
+  return COMPLETED_TRANSACTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 function signalWeight(signal: string): number {
   if (/clone domain|lookalike|punycode|community reports?/i.test(signal)) return 72;
   if (/redirects? to a different domain/i.test(signal)) return 55;
@@ -112,6 +145,7 @@ function signalWeight(signal: string): number {
 }
 
 function extractContextSignals(context: UrlSignalContext) {
+  const submittedText = String(context.submittedText || "");
   const urls = asStringArray(context.urls);
   const riskHints = asStringArray(context.riskHints);
   const fetchErrors = asStringArray(context.fetchErrors);
@@ -129,6 +163,7 @@ function extractContextSignals(context: UrlSignalContext) {
 
   return {
     urls,
+    submittedText,
     riskHints,
     fetchErrors,
     trustedMarketplaceHosts,
@@ -151,6 +186,14 @@ function trustedMarketplaceReasons(signals: ReturnType<typeof extractContextSign
   }
   reasons.push("No hard scam indicators found");
   return dedupe(reasons).slice(0, 3);
+}
+
+function completedTransactionReasons(): string[] {
+  return [
+    "Item was already received",
+    "Payment happened after delivery",
+    "No hard scam indicators found",
+  ];
 }
 
 function filterUnsupportedReasons(reasons: string[], hasHardEvidence: boolean): string[] {
@@ -211,6 +254,7 @@ export function calibrateRiskResult<T extends RiskResultShape>(
   const hasTrustedMarketplace =
     signals.trustedMarketplaceHosts.length > 0 || signals.trustSignals.some((signal) => /marketplace/i.test(signal));
   const hasSoftEvidence = signals.softRiskSignals.length > 0 || signals.fetchErrors.length > 0;
+  const hasCompletedTransaction = hasCompletedTransactionSignal(signals.submittedText);
 
   let score = clampScore(result.score);
   let level = result.level as RiskLevel | string;
@@ -218,7 +262,13 @@ export function calibrateRiskResult<T extends RiskResultShape>(
   let advice = result.advice;
   let skipAI = result.skipAI;
 
-  if (hasTrustedMarketplace && supportedHardEvidence.length === 0) {
+  if (hasCompletedTransaction && supportedHardEvidence.length === 0) {
+    score = Math.min(score, 25);
+    level = "Low";
+    nextReasons = completedTransactionReasons();
+    advice = COMPLETED_TRANSACTION_ADVICE;
+    skipAI = false;
+  } else if (hasTrustedMarketplace && supportedHardEvidence.length === 0) {
     const maxScore = hasSoftEvidence ? 55 : 30;
     score = Math.min(score, maxScore);
     const calibratedLevel = scoreToLevel(score);

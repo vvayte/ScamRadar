@@ -31,6 +31,7 @@ type ParsedRequestInput = {
 
 function emptyUrlInspection(): UrlInspectionResult {
   return {
+    submittedText: "",
     urls: [],
     extractedText: "",
     riskHints: [],
@@ -238,6 +239,7 @@ export async function POST(req: NextRequest) {
     let urlInspection = trimmedText
       ? await inspectListingUrlsFromText(trimmedText)
       : emptyUrlInspection();
+    urlInspection.submittedText = trimmedText;
 
     const communityHints = await getCommunityRiskHintsForUrls(urlInspection.urls);
     if (communityHints.length > 0) {
@@ -301,7 +303,7 @@ export async function POST(req: NextRequest) {
     }
 
     const systemPrompt =
-      'You are a security assistant specialising in fraud detection. A user has submitted text, URLs, or listing context for scam analysis. Respond ONLY in JSON with keys: "score" (0-100), "level" (Low, Medium, High), "reasons" (array of up to 3 short reasons), and "advice" (a concise sentence advising the user). Do not mark normal known marketplace or product URLs as High Risk unless the provided context contains concrete scam evidence such as a clone domain, off-platform payment/contact, high-risk payment method, sensitive-info request, or community reports. Do not use vague unsupported reasons like unsolicited link, potential fake product, or lack of product detail.';
+      'You are a security assistant specialising in fraud detection. A user has submitted text, URLs, or listing context for scam analysis. Respond ONLY in JSON with keys: "score" (0-100), "level" (Low, Medium, High), "reasons" (array of up to 3 short reasons), and "advice" (a concise sentence advising the user). Do not mark normal known marketplace or product URLs as High Risk unless the provided context contains concrete scam evidence such as a clone domain, off-platform payment/contact, high-risk payment method, sensitive-info request, or community reports. If the user says they already received the item and only paid after delivery, treat that as low risk unless there is separate evidence of fraud. Do not use vague unsupported reasons like unsolicited link, potential fake product, or lack of product detail.';
     const userPrompt = `Text to evaluate:\n${analysisInput}`;
 
     const completion = await openai.chat.completions.create({

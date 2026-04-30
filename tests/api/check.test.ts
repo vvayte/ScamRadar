@@ -379,6 +379,72 @@ describe('POST /api/check', () => {
     expect(payload.reasons.join(' ')).not.toMatch(/lack of detail/i);
   });
 
+  it('keeps completed Russian transactions low even when AI overreacts to money language', async () => {
+    createCompletionMock.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              score: 85,
+              level: 'High',
+              reasons: ['Money was sent after a purchase', 'Payment may be risky'],
+              advice: 'Do not proceed.',
+            }),
+          },
+        },
+      ],
+    });
+
+    const request = new Request('http://localhost/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: 'я получил товар, все прошло прекрасно, товар себя оправдал, только потом я скинул деньги за этот товар, я все правильно сделал?',
+      }),
+    });
+
+    const response = await POST(request as any);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.level).toBe('Low');
+    expect(payload.score).toBeLessThanOrEqual(25);
+    expect(payload.reasons).toContain('Item was already received');
+    expect(createCompletionMock).toHaveBeenCalledOnce();
+  });
+
+  it('does not downgrade unresolved Russian delivery problems as completed transactions', async () => {
+    createCompletionMock.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              score: 82,
+              level: 'High',
+              reasons: ['Payment sent but item was not received'],
+              advice: 'Do not send more money and dispute the payment.',
+            }),
+          },
+        },
+      ],
+    });
+
+    const request = new Request('http://localhost/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: 'я скинул деньги, но не получил товар, продавец пропал',
+      }),
+    });
+
+    const response = await POST(request as any);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.level).toBe('High');
+    expect(payload.score).toBe(82);
+  });
+
   it('analyzes uploaded listing image and returns image-driven risk result', async () => {
     inspectImageForScamMock.mockResolvedValue({
       extractedText: 'urgent payment only via bank transfer',

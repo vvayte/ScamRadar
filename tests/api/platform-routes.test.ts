@@ -394,5 +394,58 @@ describe('Platform API routes', () => {
       expect(payload.score).toBeLessThanOrEqual(30);
       expect(payload.reasons.join(' ')).not.toMatch(/unsolicited|fake product/i);
     });
+
+    it('keeps completed Russian transaction messages low in the bot API', async () => {
+      const text =
+        'я получил товар, все прошло прекрасно, товар себя оправдал, только потом я скинул деньги за этот товар';
+      applyRulesMock.mockReturnValueOnce({
+        score: 0,
+        level: 'Low',
+        reasons: [],
+        advice: 'Appears safe, but stay vigilant.',
+        skipAI: false,
+      });
+      inspectListingUrlsFromTextMock.mockResolvedValueOnce({
+        urls: [],
+        extractedText: '',
+        riskHints: [],
+        fetchErrors: [],
+        trustedMarketplaceHosts: [],
+        hardRiskSignals: [],
+        softRiskSignals: [],
+        trustSignals: [],
+      });
+      createCompletionMock.mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                score: 85,
+                level: 'High',
+                reasons: ['Money was sent after a purchase'],
+                advice: 'Do not proceed.',
+              }),
+            },
+          },
+        ],
+      });
+
+      const request = new Request('http://localhost/api/bot/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-token': 'bot_secret',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      const response = await botAnalyzePost(request as any);
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.level).toBe('Low');
+      expect(payload.score).toBeLessThanOrEqual(25);
+      expect(payload.reasons).toContain('Item was already received');
+    });
   });
 });

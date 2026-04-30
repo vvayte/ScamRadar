@@ -7,6 +7,7 @@ import {
 } from "@/lib/marketplaceInspector";
 
 export type UrlInspectionResult = {
+  submittedText?: string;
   urls: string[];
   extractedText: string;
   riskHints: string[];
@@ -457,6 +458,7 @@ export async function inspectListingUrlsFromText(input: string): Promise<UrlInsp
   const urls = extractUrls(input);
   if (!urls.length) {
     return {
+      submittedText: input,
       urls: [],
       extractedText: "",
       riskHints: [],
@@ -478,6 +480,7 @@ export async function inspectListingUrlsFromText(input: string): Promise<UrlInsp
   const trustSignals = inspections.flatMap((item) => item.trustSignals);
 
   return {
+    submittedText: input,
     urls,
     extractedText: textBlocks.join("\n\n").slice(0, MAX_EXTRACTED_TEXT_LENGTH),
     riskHints: dedupe(riskHints).slice(0, 5),
