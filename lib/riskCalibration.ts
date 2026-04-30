@@ -126,9 +126,25 @@ function isUnsupportedMarketplaceReason(reason: string): boolean {
 }
 
 export function isCompletedLowRiskTransactionText(text: string): boolean {
-  if (!text.trim()) return false;
-  if (UNRESOLVED_TRANSACTION_PROBLEM_PATTERNS.some((pattern) => pattern.test(text))) return false;
-  return COMPLETED_TRANSACTION_PATTERNS.some((pattern) => pattern.test(text));
+  const normalized = text.toLowerCase().normalize("NFKC");
+  if (!normalized.trim()) return false;
+  if (UNRESOLVED_TRANSACTION_PROBLEM_PATTERNS.some((pattern) => pattern.test(normalized))) return false;
+
+  const hasRussianCompletedSignals =
+    (
+      normalized.includes("\u043f\u043e\u043b\u0443\u0447\u0438\u043b \u0442\u043e\u0432\u0430\u0440") ||
+      normalized.includes("\u043f\u043e\u043b\u0443\u0447\u0438\u043b\u0430 \u0442\u043e\u0432\u0430\u0440") ||
+      normalized.includes("\u0442\u043e\u0432\u0430\u0440 \u043f\u043e\u043b\u0443\u0447\u0435\u043d")
+    ) &&
+    (
+      normalized.includes("\u0432\u0441\u0435 \u043f\u0440\u043e\u0448\u043b\u043e") ||
+      normalized.includes("\u0432\u0441\u0451 \u043f\u0440\u043e\u0448\u043b\u043e") ||
+      normalized.includes("\u0442\u043e\u0432\u0430\u0440 \u0441\u0435\u0431\u044f \u043e\u043f\u0440\u0430\u0432\u0434\u0430\u043b") ||
+      normalized.includes("\u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043e\u0442\u043e\u043c") ||
+      normalized.includes("\u043f\u043e\u0441\u043b\u0435 \u043f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u044f")
+    );
+
+  return hasRussianCompletedSignals || COMPLETED_TRANSACTION_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 function signalWeight(signal: string): number {

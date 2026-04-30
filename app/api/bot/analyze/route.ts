@@ -33,6 +33,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing text." }, { status: 400 });
     }
 
+    if (!/https?:\/\//i.test(text) && isCompletedLowRiskTransactionText(text)) {
+      return NextResponse.json({
+        score: 10,
+        level: "Low",
+        reasons: [
+          "Item was already received",
+          "Payment happened after delivery",
+          "No hard scam indicators found",
+        ],
+        advice:
+          "This sounds low risk: receiving the item before paying is generally safer. Keep receipts and payment records.",
+        skipAI: true,
+        source: "heuristic",
+      });
+    }
+
     const urlInspection = await inspectListingUrlsFromText(text);
     urlInspection.submittedText = text;
     const combined = [

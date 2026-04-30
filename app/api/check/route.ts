@@ -62,6 +62,21 @@ function withDisplayableReasons(result: RuleResult): RuleResult {
   };
 }
 
+function completedTransactionResult(): RuleResult {
+  return {
+    score: 10,
+    level: "Low",
+    reasons: [
+      "Item was already received",
+      "Payment happened after delivery",
+      "No hard scam indicators found",
+    ],
+    advice:
+      "This sounds low risk: receiving the item before paying is generally safer. Keep receipts and payment records.",
+    skipAI: true,
+  };
+}
+
 async function parseRequestInput(req: NextRequest): Promise<ParsedRequestInput> {
   const contentType = (req.headers.get("content-type") || "").toLowerCase();
 
@@ -235,6 +250,24 @@ export async function POST(req: NextRequest) {
           rateDecision.retryAfterSeconds
         );
       }
+    }
+
+    if (
+      trimmedText &&
+      !imageFile &&
+      !/https?:\/\//i.test(trimmedText) &&
+      isCompletedLowRiskTransactionText(trimmedText)
+    ) {
+      const safeResult = completedTransactionResult();
+      const usage = await applySuccessfulCheck({
+        subject: usageSubject,
+        input: trimmedText,
+        result: safeResult,
+        hasImage: false,
+      });
+      const response = NextResponse.json({ ...safeResult, usage });
+      attachAnonymousCookie(response, usageSubject);
+      return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
 
     let urlInspection = trimmedText
