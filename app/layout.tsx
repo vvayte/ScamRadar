@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Script from "next/script";
 import { Fraunces, JetBrains_Mono, Space_Grotesk, Sora } from "next/font/google";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import Analytics from "@/components/Analytics";
 import NewsletterForm from "@/components/NewsletterForm";
 import { RadarSweep } from "@/components/Icons";
@@ -116,6 +117,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {plausibleDomain ? (
           <Script defer data-domain={plausibleDomain} src={plausibleScriptSrc} strategy="afterInteractive" />
         ) : null}
+
+        <VercelAnalytics />
 
         <div className="flex min-h-screen flex-col">
           <div className="flex-1">{children}</div>
