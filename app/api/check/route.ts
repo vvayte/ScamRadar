@@ -8,6 +8,7 @@ import { getCommunityRiskHintsForUrls } from "@/lib/communityIntel";
 import {
   applyUrlSignalsToResult,
   calibrateRiskResult,
+  isCompletedLowRiskTransactionText,
   scoreToLevel,
 } from "@/lib/riskCalibration";
 import {
@@ -248,6 +249,25 @@ export async function POST(req: NextRequest) {
 
     let analysisInput = buildAnalysisInput(trimmedText, urlInspection);
     let heuristic = applyUrlSignalsToResult(applyRules(analysisInput), urlInspection);
+
+    if (
+      !imageFile &&
+      isCompletedLowRiskTransactionText(trimmedText) &&
+      !(urlInspection.hardRiskSignals || []).length
+    ) {
+      const finalHeuristic = withDisplayableReasons(
+        calibrateRiskResult(heuristic, urlInspection, { evidenceReasons: heuristic.reasons })
+      );
+      const usage = await applySuccessfulCheck({
+        subject: usageSubject,
+        input: trimmedText,
+        result: finalHeuristic,
+        hasImage: false,
+      });
+      const response = NextResponse.json({ ...finalHeuristic, usage });
+      attachAnonymousCookie(response, usageSubject);
+      return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
+    }
 
     if (imageFile) {
       let imageInspection: ImageInspectionResult;

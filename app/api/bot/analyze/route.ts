@@ -5,6 +5,7 @@ import openai from "@/lib/openaiClient";
 import {
   applyUrlSignalsToResult,
   calibrateRiskResult,
+  isCompletedLowRiskTransactionText,
   scoreToLevel,
 } from "@/lib/riskCalibration";
 
@@ -45,6 +46,13 @@ export async function POST(req: NextRequest) {
         : "",
     ].filter(Boolean).join("\n").slice(0, 7000);
     const heuristic = applyUrlSignalsToResult(applyRules(combined), urlInspection);
+
+    if (isCompletedLowRiskTransactionText(text) && !(urlInspection.hardRiskSignals || []).length) {
+      return NextResponse.json({
+        ...calibrateRiskResult(heuristic, urlInspection, { evidenceReasons: heuristic.reasons }),
+        source: "heuristic",
+      });
+    }
 
     if (heuristic.skipAI) {
       return NextResponse.json({

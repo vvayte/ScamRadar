@@ -125,7 +125,7 @@ function isUnsupportedMarketplaceReason(reason: string): boolean {
   return UNSUPPORTED_MARKETPLACE_REASON_PATTERNS.some((pattern) => pattern.test(reason));
 }
 
-function hasCompletedTransactionSignal(text: string): boolean {
+export function isCompletedLowRiskTransactionText(text: string): boolean {
   if (!text.trim()) return false;
   if (UNRESOLVED_TRANSACTION_PROBLEM_PATTERNS.some((pattern) => pattern.test(text))) return false;
   return COMPLETED_TRANSACTION_PATTERNS.some((pattern) => pattern.test(text));
@@ -254,7 +254,7 @@ export function calibrateRiskResult<T extends RiskResultShape>(
   const hasTrustedMarketplace =
     signals.trustedMarketplaceHosts.length > 0 || signals.trustSignals.some((signal) => /marketplace/i.test(signal));
   const hasSoftEvidence = signals.softRiskSignals.length > 0 || signals.fetchErrors.length > 0;
-  const hasCompletedTransaction = hasCompletedTransactionSignal(signals.submittedText);
+  const hasCompletedTransaction = isCompletedLowRiskTransactionText(signals.submittedText);
 
   let score = clampScore(result.score);
   let level = result.level as RiskLevel | string;

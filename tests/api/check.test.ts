@@ -410,7 +410,7 @@ describe('POST /api/check', () => {
     expect(payload.level).toBe('Low');
     expect(payload.score).toBeLessThanOrEqual(25);
     expect(payload.reasons).toContain('Item was already received');
-    expect(createCompletionMock).toHaveBeenCalledOnce();
+    expect(createCompletionMock).not.toHaveBeenCalled();
   });
 
   it('does not downgrade unresolved Russian delivery problems as completed transactions', async () => {
