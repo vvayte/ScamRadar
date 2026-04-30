@@ -5,11 +5,11 @@ export type PlanType = "single" | "monthly" | "yearly" | "flash";
 
 export const PLAN_CONFIG: Record<
   PlanType,
-  { envKey: string; mode: "payment" | "subscription"; trialDays?: number; credits: number }
+  { envKey: string; mode: "payment" | "subscription"; credits: number }
 > = {
   single: { envKey: "STRIPE_PRICE_ID_SINGLE", mode: "payment", credits: 1 },
-  monthly: { envKey: "STRIPE_PRICE_ID_MONTHLY", mode: "subscription", trialDays: 3, credits: 0 },
-  yearly: { envKey: "STRIPE_PRICE_ID_YEARLY", mode: "subscription", trialDays: 3, credits: 0 },
+  monthly: { envKey: "STRIPE_PRICE_ID_MONTHLY", mode: "subscription", credits: 0 },
+  yearly: { envKey: "STRIPE_PRICE_ID_YEARLY", mode: "subscription", credits: 0 },
   flash: { envKey: "STRIPE_PRICE_ID_FLASH", mode: "subscription", credits: 0 },
 };
 

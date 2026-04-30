@@ -65,6 +65,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
         <div className="absolute left-1/2 top-0 h-24 w-[76%] -translate-x-1/2 rounded-full bg-cyan-500/20 blur-3xl" />
 
         <button
+          type="button"
           onClick={onClose}
           aria-label="Close paywall"
           className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white/70 transition hover:bg-white/10 hover:text-white"
@@ -83,8 +84,8 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
           </h2>
 
           <p className="mt-4 max-w-xl text-base leading-7 text-white/75">
-            Continue with unlimited checks, full forensic breakdown, and case-aware follow-up. Start with a 3-day free
-            trial, cancel before it ends, and pay nothing.
+            Continue with unlimited checks, full forensic breakdown, and case-aware follow-up. Promo codes can be
+            entered securely during Stripe checkout.
           </p>
 
           <div className="mt-5 max-w-xl rounded-2xl border border-white/10 bg-black/25 p-4 text-sm text-white/75">
@@ -94,6 +95,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
 
         <div className="relative grid gap-4 p-6 md:grid-cols-3 md:p-8">
           <button
+            type="button"
             onClick={() => handlePurchase("single")}
             disabled={pending !== null}
             className="hover-lift rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-left transition hover:border-cyan-300/35 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-70"
@@ -107,6 +109,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
           </button>
 
           <button
+            type="button"
             onClick={() => handlePurchase("monthly")}
             disabled={pending !== null}
             className="hover-lift relative rounded-3xl border border-cyan-300/45 bg-cyan-500/12 p-5 text-left transition hover:border-cyan-200/60 hover:bg-cyan-500/18 disabled:cursor-not-allowed disabled:opacity-70 glow-accent"
@@ -119,13 +122,14 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
               <span className="text-4xl font-black text-white">$4.99</span>
               <span className="text-sm font-semibold text-white/55">/mo</span>
             </div>
-            <div className="mt-2 text-sm text-white/80">Unlimited checks. 3-day free trial.</div>
+            <div className="mt-2 text-sm text-white/80">Unlimited checks. Promo codes accepted at checkout.</div>
             <div className="mt-5 rounded-2xl bg-cyan-100 px-4 py-3 text-center font-bold text-[#062a36]">
-              {pending === "monthly" ? "Redirecting..." : "Start free trial"}
+              {pending === "monthly" ? "Redirecting..." : "Subscribe monthly"}
             </div>
           </button>
 
           <button
+            type="button"
             onClick={() => handlePurchase("yearly")}
             disabled={pending !== null}
             className="hover-lift relative rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-left transition hover:border-cyan-300/35 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-70"
@@ -139,10 +143,10 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
               <span className="text-sm font-semibold text-white/55">/yr</span>
             </div>
             <div className="mt-2 text-sm text-white/70">
-              <span className="line-through text-white/40">$59.88</span> save half. 3-day trial.
+              <span className="line-through text-white/40">$59.88</span> save half. Promo codes accepted.
             </div>
             <div className="mt-5 rounded-2xl bg-cyan-500/85 px-4 py-3 text-center font-bold text-white">
-              {pending === "yearly" ? "Redirecting..." : "Start free trial"}
+              {pending === "yearly" ? "Redirecting..." : "Subscribe yearly"}
             </div>
           </button>
         </div>
@@ -171,7 +175,7 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
             <Link href="/pricing" className="text-white/80 hover:text-white">
               View full pricing
             </Link>
-            <button onClick={onClose} className="text-white/55 hover:text-white">
+            <button type="button" onClick={onClose} className="text-white/55 hover:text-white">
               Maybe later
             </button>
           </div>

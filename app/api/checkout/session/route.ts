@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     const sessionParams: any = {
       mode: config.mode,
       payment_method_types: ['card'],
+      allow_promotion_codes: true,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -52,10 +53,6 @@ export async function POST(req: NextRequest) {
       const fullUser = await db.user.findUnique({ where: { id: user.id } });
       if (fullUser?.stripeCustomerId) sessionParams.customer = fullUser.stripeCustomerId;
       else sessionParams.customer_email = fullUser?.email || user.email;
-    }
-
-    if (config.mode === 'subscription' && config.trialDays) {
-      sessionParams.subscription_data = { trial_period_days: config.trialDays };
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);

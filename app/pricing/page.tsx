@@ -43,7 +43,7 @@ export default function PricingPage() {
               Pick your <span className="gradient-text">shield</span>
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 soft-muted">
-              3-day free trial on any subscription. Cancel anytime — no charge if you cancel before the trial ends.
+              Subscribe when you are ready. Promo codes can be entered securely during Stripe checkout.
             </p>
           </div>
           <Link href="/" className="rounded-2xl border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.1]">
@@ -61,6 +61,7 @@ export default function PricingPage() {
             <div className="mt-0.5 text-xs text-amber-100/70">Yearly plan is just $0.08/day — less than a gum stick. Unlimited scans, forever.</div>
           </div>
           <button
+            type="button"
             onClick={() => handleClick("yearly")}
             disabled={pending !== null}
             className="ml-auto flex-shrink-0 rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-amber-900 transition hover:bg-amber-300 disabled:opacity-60"
@@ -98,6 +99,7 @@ export default function PricingPage() {
             </div>
 
             <button
+              type="button"
               onClick={() => handleClick("single")}
               disabled={pending !== null}
               className="press mt-8 w-full rounded-2xl bg-white/10 border border-white/15 px-5 py-4 text-sm font-black text-white transition hover:bg-white/15 disabled:opacity-60"
@@ -131,7 +133,7 @@ export default function PricingPage() {
             <p className="mt-3 text-sm leading-6 text-white/65">Unlimited protection, billed every month.</p>
 
             <div className="mt-6 space-y-2.5">
-              {["Unlimited full checks", "Forensic report unlocked", "Case-aware follow-up chat", "3-day free trial"].map((p) => (
+              {["Unlimited full checks", "Forensic report unlocked", "Case-aware follow-up chat", "Promo code support at checkout"].map((p) => (
                 <div key={p} className="flex items-center gap-3 rounded-xl border border-cyan-300/15 bg-cyan-500/10 px-4 py-3 text-sm text-white/85">
                   <CheckIcon size={14} className="flex-shrink-0 text-cyan-300" />
                   {p}
@@ -140,11 +142,12 @@ export default function PricingPage() {
             </div>
 
             <button
+              type="button"
               onClick={() => handleClick("monthly")}
               disabled={pending !== null}
               className="press mt-8 w-full rounded-2xl bg-cyan-100 px-5 py-4 text-sm font-black text-[#062a36] transition hover:bg-white disabled:opacity-60"
             >
-              {pending === "monthly" ? "Redirecting..." : "Start free trial"}
+              {pending === "monthly" ? "Redirecting..." : "Subscribe monthly"}
             </button>
           </div>
 
@@ -184,7 +187,7 @@ export default function PricingPage() {
               <p className="mt-3 text-sm leading-6 text-white/65">Full year of protection — half the monthly price.</p>
 
               <div className="mt-6 space-y-2.5">
-                {["Everything in Monthly", "Save 50% vs monthly ($59.88)", "Priority support", "3-day free trial"].map((p) => (
+                {["Everything in Monthly", "Save 50% vs monthly ($59.88)", "Priority support", "Promo code support at checkout"].map((p) => (
                   <div key={p} className="flex items-center gap-3 rounded-xl border border-amber-400/15 bg-amber-500/8 px-4 py-3 text-sm text-white/85">
                     <CheckIcon size={14} className="flex-shrink-0 text-amber-300" />
                     {p}
@@ -193,11 +196,12 @@ export default function PricingPage() {
               </div>
 
               <button
+                type="button"
                 onClick={() => handleClick("yearly")}
                 disabled={pending !== null}
                 className="press mt-8 w-full rounded-2xl bg-amber-400 px-5 py-4 text-sm font-black text-amber-900 transition hover:bg-amber-300 disabled:opacity-60 shadow-lg shadow-amber-500/30"
               >
-                {pending === "yearly" ? "Redirecting..." : "Claim 50% off — Start free trial"}
+                {pending === "yearly" ? "Redirecting..." : "Claim 50% off"}
               </button>
             </div>
           </div>
@@ -219,11 +223,11 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Trial info */}
+        {/* Checkout info */}
         <div className="mt-8 rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-white/60 md:p-8">
-          <strong className="text-white">How the trial works:</strong> All subscriptions start with a 3-day free trial.
-          You won&apos;t be charged during the trial. If you don&apos;t cancel before it ends, your card will be
-          automatically billed at the listed price and renewed each cycle. You can cancel anytime from your account.
+          <strong className="text-white">How checkout works:</strong> Stripe handles payment securely and lets you
+          enter a promo code before you subscribe. Subscriptions renew automatically at the listed price unless
+          cancelled.
         </div>
       </div>
     </main>

@@ -105,8 +105,8 @@ describe('POST /api/checkout/session', () => {
     expect(createSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'subscription',
+        allow_promotion_codes: true,
         line_items: [{ price: 'price_monthly', quantity: 1 }],
-        subscription_data: { trial_period_days: 3 },
         metadata: {
           planType: 'monthly',
           userId: '',

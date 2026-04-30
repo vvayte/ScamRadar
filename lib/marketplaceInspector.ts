@@ -1,4 +1,4 @@
-type MarketplaceMatch = {
+export type MarketplaceMatch = {
   id: string;
   name: string;
   hostPatterns: RegExp[];
@@ -10,9 +10,20 @@ export type MarketplaceInspection = {
   isKnownMarketplace: boolean;
   details: string[];
   riskHints: string[];
+  hardRiskSignals: string[];
+  softRiskSignals: string[];
+  trustSignals: string[];
 };
 
+const AMAZON_HOST_PATTERN =
+  /(\.|^)amazon\.(com|co\.uk|de|fr|it|es|ca|com\.au|co\.jp|co\.in|in|nl|se|pl|sg|ae|com\.mx|com\.br|com\.tr|sa|cn|com\.be)$/i;
+
 const KNOWN_MARKETPLACES: MarketplaceMatch[] = [
+  {
+    id: "amazon",
+    name: "Amazon",
+    hostPatterns: [AMAZON_HOST_PATTERN],
+  },
   {
     id: "avito",
     name: "Avito",
@@ -66,10 +77,12 @@ const KNOWN_MARKETPLACES: MarketplaceMatch[] = [
 ];
 
 const BRAND_MISMATCH_CHECKS = [
+  { label: "Amazon", pattern: /\bamazon\b/i, trustedHost: AMAZON_HOST_PATTERN },
   { label: "eBay", pattern: /\bebay\b/i, trustedHost: /(\.|^)ebay\./i },
   { label: "Facebook Marketplace", pattern: /facebook marketplace/i, trustedHost: /facebook\.com$/i },
   { label: "Avito", pattern: /\bavito\b/i, trustedHost: /(\.|^)avito\.ru$/i },
   { label: "Craigslist", pattern: /\bcraigslist\b/i, trustedHost: /(\.|^)craigslist\.org$/i },
+  { label: "OLX", pattern: /\bolx\b/i, trustedHost: /(\.|^)olx\.[a-z.]+$/i },
 ];
 
 function dedupe(items: string[]): string[] {
@@ -148,6 +161,14 @@ function findMarketplace(hostname: string): MarketplaceMatch | null {
   return null;
 }
 
+export function getKnownMarketplaceForHostname(hostname: string): MarketplaceMatch | null {
+  return findMarketplace(hostname.toLowerCase());
+}
+
+export function isKnownMarketplaceHostname(hostname: string): boolean {
+  return Boolean(getKnownMarketplaceForHostname(hostname));
+}
+
 function gatherMarketplaceDetails(
   platformName: string,
   combinedText: string,
@@ -188,53 +209,66 @@ function gatherMarketplaceDetails(
   return dedupe(details).slice(0, 5);
 }
 
-function gatherMarketplaceRiskHints(
+function gatherMarketplaceSignals(
   hostname: string,
   combinedText: string,
   isKnownMarketplace: boolean
-): string[] {
-  const hints: string[] = [];
+): { hardRiskSignals: string[]; softRiskSignals: string[] } {
+  const hardRiskSignals: string[] = [];
+  const softRiskSignals: string[] = [];
 
   if (
-    /\b(whatsapp|telegram|signal|discord|gmail\.com|protonmail|private chat)\b/i.test(combinedText)
+    /\b(?:continue|contact|message|chat|text|dm|reach|reply|write)\b.{0,50}\b(?:whatsapp|telegram|signal|discord|gmail\.com|protonmail|private chat)\b/i.test(combinedText) ||
+    /\b(?:whatsapp|telegram|signal|discord|gmail\.com|protonmail|private chat)\b.{0,50}\b(?:only|outside|private|fast deal)\b/i.test(combinedText)
   ) {
-    hints.push("Listing asks to continue communication off-platform");
+    hardRiskSignals.push("Listing asks to continue communication off-platform");
   }
 
   if (
-    /\b(bank transfer|wire transfer|gift card|crypto only|bitcoin only|paypal friends and family)\b/i.test(
+    /\b(bank transfer|wire transfer|crypto only|bitcoin only|paypal friends and family|western union|zelle|cashapp|pay outside|outside the platform)\b/i.test(
+      combinedText
+    ) ||
+    /\b(?:pay|send|buy|purchase)\b.{0,35}\bgift cards?\b/i.test(combinedText) ||
+    /\bgift cards?\b.{0,35}\b(?:code|payment|pay|send)\b/i.test(
       combinedText
     )
   ) {
-    hints.push("Listing requests payment methods with weak buyer protection");
+    hardRiskSignals.push("Listing requests payment methods with weak buyer protection");
   }
 
   if (/\b(deposit now|booking fee|reservation fee|hold item with transfer)\b/i.test(combinedText)) {
-    hints.push("Listing asks for a prepayment/deposit before secure checkout");
+    hardRiskSignals.push("Listing asks for a prepayment/deposit before secure checkout");
   }
 
   if (/\b(shipper agent|courier fee|insurance release fee)\b/i.test(combinedText)) {
-    hints.push("Listing includes suspicious extra payment fees");
+    hardRiskSignals.push("Listing includes suspicious extra payment fees");
   }
 
   if (isKnownMarketplace && /\b(pay outside|outside the platform|avoid platform fees)\b/i.test(combinedText)) {
-    hints.push("Seller attempts to bypass platform payment safeguards");
+    hardRiskSignals.push("Seller attempts to bypass platform payment safeguards");
+  }
+
+  if (/\b(act now|limited time|urgent|only today|final notice)\b/i.test(combinedText)) {
+    softRiskSignals.push("Listing uses urgency pressure language");
   }
 
   for (const check of BRAND_MISMATCH_CHECKS) {
     if (check.pattern.test(combinedText) && !check.trustedHost.test(hostname)) {
-      hints.push(`Possible fake ${check.label} clone domain`);
+      hardRiskSignals.push(`Possible fake ${check.label} clone domain`);
     }
   }
 
-  return dedupe(hints).slice(0, 4);
+  return {
+    hardRiskSignals: dedupe(hardRiskSignals).slice(0, 4),
+    softRiskSignals: dedupe(softRiskSignals).slice(0, 3),
+  };
 }
 
 export function inspectMarketplaceListing(url: string, html: string, textSnippet: string): MarketplaceInspection {
   const parsedUrl = new URL(url);
   const hostname = parsedUrl.hostname.toLowerCase();
   const marketplace = findMarketplace(hostname);
-  const combinedText = [textSnippet, html.slice(0, 12000)].join("\n");
+  const combinedText = [hostname, textSnippet, html.slice(0, 12000)].join("\n");
 
   const platformName = marketplace?.name || "Generic listing page";
   const platformId = marketplace?.id || "generic";
@@ -243,7 +277,13 @@ export function inspectMarketplaceListing(url: string, html: string, textSnippet
   const details = isKnownMarketplace
     ? gatherMarketplaceDetails(platformName, combinedText, html)
     : [];
-  const riskHints = gatherMarketplaceRiskHints(hostname, combinedText, isKnownMarketplace);
+  const { hardRiskSignals, softRiskSignals } = gatherMarketplaceSignals(
+    hostname,
+    combinedText,
+    isKnownMarketplace
+  );
+  const trustSignals = isKnownMarketplace ? [`Known marketplace domain: ${platformName}`] : [];
+  const riskHints = dedupe([...hardRiskSignals, ...softRiskSignals]).slice(0, 4);
 
   return {
     platformId,
@@ -251,5 +291,8 @@ export function inspectMarketplaceListing(url: string, html: string, textSnippet
     isKnownMarketplace,
     details,
     riskHints,
+    hardRiskSignals,
+    softRiskSignals,
+    trustSignals,
   };
 }

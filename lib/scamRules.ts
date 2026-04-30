@@ -22,7 +22,8 @@ const heuristics: { regex: RegExp; weight: number; reason: string }[] = [
     reason: 'Uses urgency or time pressure',
   },
   {
-    regex: /\bpayment|send money|transfer|bank account|wire transfer\b/i,
+    regex:
+      /\b(send money|transfer funds?|bank transfer|wire transfer|pay outside|outside the platform|paypal friends and family|zelle|cashapp|venmo)\b/i,
     weight: 0.25,
     reason: 'Pressure to pay or transfer funds',
   },
@@ -37,9 +38,10 @@ const heuristics: { regex: RegExp; weight: number; reason: string }[] = [
     reason: 'Requests moving conversation off platform',
   },
   {
-    regex: /bit\.ly|tinyurl|goo\.gl|t\.co|\b[a-z0-9]{1,5}\.[a-z]{2,}/i,
+    regex:
+      /\b(bit\.ly|tinyurl\.com|goo\.gl|t\.co|is\.gd|buff\.ly|cutt\.ly|rebrand\.ly|ow\.ly|shorturl\.at|tiny\.cc|rb\.gy|lnkd\.in|amzn\.to)\b/i,
     weight: 0.1,
-    reason: 'Contains shortened or suspicious links',
+    reason: 'Contains a shortened link',
   },
   {
     regex: /\bfree money|guaranteed|too good to be true|win big|prize\b/i,
@@ -52,7 +54,8 @@ const heuristics: { regex: RegExp; weight: number; reason: string }[] = [
     reason: 'Requests sensitive account verification',
   },
   {
-    regex: /\bgift card|itunes card|wire the money|western union\b/i,
+    regex:
+      /\b(?:pay|send|buy|purchase)\b.{0,35}\bgift cards?\b|\bgift cards?\b.{0,35}\b(?:code|payment|pay|send)\b|itunes card|wire the money|western union\b/i,
     weight: 0.2,
     reason: 'Suggests paying via gift card or wire service',
   },

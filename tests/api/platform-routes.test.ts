@@ -341,5 +341,58 @@ describe('Platform API routes', () => {
       });
       expect(createCompletionMock).not.toHaveBeenCalled();
     });
+
+    it('calibrates benign marketplace links the same way as the web checker', async () => {
+      const url = 'https://www.amazon.com/dp/B0CNCL35CH/ref=hw_26_a_dag_c_053';
+      applyRulesMock.mockReturnValueOnce({
+        score: 0,
+        level: 'Low',
+        reasons: [],
+        advice: 'Appears safe, but stay vigilant.',
+        skipAI: false,
+      });
+      inspectListingUrlsFromTextMock.mockResolvedValueOnce({
+        urls: [url],
+        extractedText: `[Source URL] ${url}\n[Marketplace Platform] Amazon`,
+        riskHints: [],
+        fetchErrors: [],
+        trustedMarketplaceHosts: ['www.amazon.com'],
+        hardRiskSignals: [],
+        softRiskSignals: [],
+        trustSignals: ['Known marketplace domain: Amazon'],
+      });
+      createCompletionMock.mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                score: 90,
+                level: 'High',
+                reasons: ['Unsolicited link in text', 'Potential fake product'],
+                advice: 'Do not proceed.',
+              }),
+            },
+          },
+        ],
+      });
+
+      const request = new Request('http://localhost/api/bot/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-token': 'bot_secret',
+        },
+        body: JSON.stringify({ text: url }),
+      });
+
+      const response = await botAnalyzePost(request as any);
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.source).toBe('ai');
+      expect(payload.level).toBe('Low');
+      expect(payload.score).toBeLessThanOrEqual(30);
+      expect(payload.reasons.join(' ')).not.toMatch(/unsolicited|fake product/i);
+    });
   });
 });

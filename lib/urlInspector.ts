@@ -1,12 +1,20 @@
 import { lookup } from "node:dns/promises";
 import net from "node:net";
-import { inspectMarketplaceListing } from "@/lib/marketplaceInspector";
+import {
+  getKnownMarketplaceForHostname,
+  inspectMarketplaceListing,
+  isKnownMarketplaceHostname,
+} from "@/lib/marketplaceInspector";
 
 export type UrlInspectionResult = {
   urls: string[];
   extractedText: string;
   riskHints: string[];
   fetchErrors: string[];
+  trustedMarketplaceHosts: string[];
+  hardRiskSignals: string[];
+  softRiskSignals: string[];
+  trustSignals: string[];
 };
 
 type UrlInspectionCacheValue = {
@@ -14,6 +22,10 @@ type UrlInspectionCacheValue = {
   textBlock: string;
   riskHints: string[];
   fetchError: string | null;
+  trustedMarketplaceHosts: string[];
+  hardRiskSignals: string[];
+  softRiskSignals: string[];
+  trustSignals: string[];
 };
 
 const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/gi;
@@ -50,6 +62,15 @@ function getFromCache(rawUrl: string): UrlInspectionCacheValue | null {
   }
 
   return cached;
+}
+
+function emptySignals() {
+  return {
+    trustedMarketplaceHosts: [],
+    hardRiskSignals: [],
+    softRiskSignals: [],
+    trustSignals: [],
+  };
 }
 
 function setCache(rawUrl: string, value: Omit<UrlInspectionCacheValue, "expiresAt">): void {
@@ -210,40 +231,83 @@ function stripHtmlToText(html: string): string {
   );
 }
 
-function collectRiskHints(initialUrl: string, finalUrl: string, bodyText: string): string[] {
-  const hints: string[] = [];
+function collectUrlSignals(initialUrl: string, finalUrl: string, bodyText: string) {
+  const hardRiskSignals: string[] = [];
+  const softRiskSignals: string[] = [];
+  const trustedMarketplaceHosts: string[] = [];
+  const trustSignals: string[] = [];
 
   const initial = new URL(initialUrl);
   const resolved = new URL(finalUrl);
+  const resolvedMarketplace = getKnownMarketplaceForHostname(resolved.hostname);
+
+  if (resolvedMarketplace) {
+    trustedMarketplaceHosts.push(resolved.hostname.toLowerCase());
+    trustSignals.push(`Known marketplace domain: ${resolvedMarketplace.name}`);
+  }
 
   if (initial.hostname !== resolved.hostname) {
-    hints.push("URL redirects to a different domain");
+    const trustedRedirect =
+      isKnownMarketplaceHostname(initial.hostname) && isKnownMarketplaceHostname(resolved.hostname);
+    const trustedShortenerRedirect =
+      initial.hostname.toLowerCase() === "amzn.to" && resolvedMarketplace?.id === "amazon";
+
+    if (!trustedRedirect && !trustedShortenerRedirect) {
+      hardRiskSignals.push("URL redirects to a different domain");
+    }
   }
 
   if (resolved.hostname.includes("xn--")) {
-    hints.push("Domain uses punycode lookalike pattern");
+    hardRiskSignals.push("Domain uses punycode lookalike pattern");
   }
 
-  if (/\b(telegram|whatsapp|signal|discord)\b/i.test(bodyText)) {
-    hints.push("Listing asks to move conversation off-platform");
+  if (
+    /\b(?:continue|contact|message|chat|text|dm|reach|reply|write)\b.{0,50}\b(?:telegram|whatsapp|signal|discord)\b/i.test(
+      bodyText
+    ) ||
+    /\b(?:telegram|whatsapp|signal|discord)\b.{0,50}\b(?:only|outside|private|fast deal)\b/i.test(bodyText)
+  ) {
+    hardRiskSignals.push("Listing asks to move conversation off-platform");
   }
 
-  if (/\b(wire transfer|bank transfer|gift card|bitcoin|crypto|usdt|western union)\b/i.test(bodyText)) {
-    hints.push("Listing suggests high-risk payment methods");
+  if (
+    /\b(wire transfer|bank transfer|bitcoin only|crypto only|usdt|western union|paypal friends and family|pay outside|outside the platform)\b/i.test(
+      bodyText
+    ) ||
+    /\b(?:pay|send|buy|purchase)\b.{0,35}\bgift cards?\b/i.test(bodyText) ||
+    /\bgift cards?\b.{0,35}\b(?:code|payment|pay|send)\b/i.test(bodyText)
+  ) {
+    hardRiskSignals.push("Listing suggests high-risk payment methods");
   }
 
   if (/\b(act now|limited time|urgent|only today|final notice)\b/i.test(bodyText)) {
-    hints.push("Listing uses urgency pressure language");
+    softRiskSignals.push("Listing uses urgency pressure language");
   }
 
   if (/\b(verify account|confirm details|send id|passport)\b/i.test(bodyText)) {
-    hints.push("Listing requests sensitive personal details");
+    hardRiskSignals.push("Listing requests sensitive personal details");
   }
 
-  return dedupe(hints).slice(0, 4);
+  const hard = dedupe(hardRiskSignals).slice(0, 4);
+  const soft = dedupe(softRiskSignals).slice(0, 3);
+
+  return {
+    riskHints: dedupe([...hard, ...soft]).slice(0, 5),
+    hardRiskSignals: hard,
+    softRiskSignals: soft,
+    trustSignals: dedupe(trustSignals),
+    trustedMarketplaceHosts: dedupe(trustedMarketplaceHosts),
+  };
 }
 
-function summarizePage(initialUrl: string, finalUrl: string, html: string): { textBlock: string; riskHints: string[] } {
+function summarizePage(initialUrl: string, finalUrl: string, html: string): {
+  textBlock: string;
+  riskHints: string[];
+  trustedMarketplaceHosts: string[];
+  hardRiskSignals: string[];
+  softRiskSignals: string[];
+  trustSignals: string[];
+} {
   const title = extractTitle(html);
   const description =
     extractMetaTag(html, "description") || extractMetaTag(html, "og:description");
@@ -251,6 +315,7 @@ function summarizePage(initialUrl: string, finalUrl: string, html: string): { te
   const strippedText = stripHtmlToText(html);
   const snippet = strippedText.slice(0, 2600);
   const marketplace = inspectMarketplaceListing(finalUrl, html, `${title}\n${description}\n${snippet}`);
+  const urlSignals = collectUrlSignals(initialUrl, finalUrl, `${title}\n${description}\n${snippet}`);
 
   const lines = [
     `[Source URL] ${finalUrl}`,
@@ -263,10 +328,14 @@ function summarizePage(initialUrl: string, finalUrl: string, html: string): { te
 
   return {
     textBlock: lines.join("\n"),
-    riskHints: dedupe([
-      ...collectRiskHints(initialUrl, finalUrl, `${title}\n${description}\n${snippet}`),
-      ...marketplace.riskHints,
-    ]).slice(0, 5),
+    riskHints: dedupe([...urlSignals.riskHints, ...marketplace.riskHints]).slice(0, 5),
+    hardRiskSignals: dedupe([...urlSignals.hardRiskSignals, ...marketplace.hardRiskSignals]).slice(0, 6),
+    softRiskSignals: dedupe([...urlSignals.softRiskSignals, ...marketplace.softRiskSignals]).slice(0, 5),
+    trustSignals: dedupe([...urlSignals.trustSignals, ...marketplace.trustSignals]).slice(0, 4),
+    trustedMarketplaceHosts: dedupe([
+      ...urlSignals.trustedMarketplaceHosts,
+      ...(marketplace.isKnownMarketplace ? [new URL(finalUrl).hostname.toLowerCase()] : []),
+    ]).slice(0, 4),
   };
 }
 
@@ -287,17 +356,54 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   }
 }
 
-async function inspectSingleUrl(urlString: string): Promise<{ textBlock: string; riskHints: string[]; fetchError: string | null }> {
+function fallbackSignalsForUrl(urlString: string) {
+  try {
+    const parsed = new URL(urlString);
+    const marketplace = getKnownMarketplaceForHostname(parsed.hostname);
+    if (!marketplace) return emptySignals();
+
+    return {
+      trustedMarketplaceHosts: [parsed.hostname.toLowerCase()],
+      hardRiskSignals: [],
+      softRiskSignals: ["URL could not be fully inspected"],
+      trustSignals: [`Known marketplace domain: ${marketplace.name}`],
+    };
+  } catch {
+    return emptySignals();
+  }
+}
+
+async function inspectSingleUrl(urlString: string): Promise<{
+  textBlock: string;
+  riskHints: string[];
+  fetchError: string | null;
+  trustedMarketplaceHosts: string[];
+  hardRiskSignals: string[];
+  softRiskSignals: string[];
+  trustSignals: string[];
+}> {
   const cached = getFromCache(urlString);
   if (cached) {
     return {
       textBlock: cached.textBlock,
       riskHints: cached.riskHints,
       fetchError: cached.fetchError,
+      trustedMarketplaceHosts: cached.trustedMarketplaceHosts,
+      hardRiskSignals: cached.hardRiskSignals,
+      softRiskSignals: cached.softRiskSignals,
+      trustSignals: cached.trustSignals,
     };
   }
 
-  let result: { textBlock: string; riskHints: string[]; fetchError: string | null };
+  let result: {
+    textBlock: string;
+    riskHints: string[];
+    fetchError: string | null;
+    trustedMarketplaceHosts: string[];
+    hardRiskSignals: string[];
+    softRiskSignals: string[];
+    trustSignals: string[];
+  };
 
   try {
     const safeUrl = await assertSafeUrl(urlString);
@@ -325,12 +431,21 @@ async function inspectSingleUrl(urlString: string): Promise<{ textBlock: string;
       textBlock: summary.textBlock,
       riskHints: summary.riskHints,
       fetchError: null,
+      trustedMarketplaceHosts: summary.trustedMarketplaceHosts,
+      hardRiskSignals: summary.hardRiskSignals,
+      softRiskSignals: summary.softRiskSignals,
+      trustSignals: summary.trustSignals,
     };
   } catch (error) {
+    const fallbackSignals = fallbackSignalsForUrl(urlString);
     result = {
       textBlock: "",
       riskHints: [],
       fetchError: `Could not inspect ${urlString}: ${(error as Error).message || "Unknown fetch error"}`,
+      trustedMarketplaceHosts: fallbackSignals.trustedMarketplaceHosts,
+      hardRiskSignals: fallbackSignals.hardRiskSignals,
+      softRiskSignals: fallbackSignals.softRiskSignals,
+      trustSignals: fallbackSignals.trustSignals,
     };
   }
 
@@ -346,6 +461,10 @@ export async function inspectListingUrlsFromText(input: string): Promise<UrlInsp
       extractedText: "",
       riskHints: [],
       fetchErrors: [],
+      trustedMarketplaceHosts: [],
+      hardRiskSignals: [],
+      softRiskSignals: [],
+      trustSignals: [],
     };
   }
 
@@ -353,11 +472,19 @@ export async function inspectListingUrlsFromText(input: string): Promise<UrlInsp
   const textBlocks = inspections.map((item) => item.textBlock).filter(Boolean);
   const riskHints = inspections.flatMap((item) => item.riskHints);
   const fetchErrors = inspections.map((item) => item.fetchError).filter(Boolean) as string[];
+  const trustedMarketplaceHosts = inspections.flatMap((item) => item.trustedMarketplaceHosts);
+  const hardRiskSignals = inspections.flatMap((item) => item.hardRiskSignals);
+  const softRiskSignals = inspections.flatMap((item) => item.softRiskSignals);
+  const trustSignals = inspections.flatMap((item) => item.trustSignals);
 
   return {
     urls,
     extractedText: textBlocks.join("\n\n").slice(0, MAX_EXTRACTED_TEXT_LENGTH),
     riskHints: dedupe(riskHints).slice(0, 5),
     fetchErrors,
+    trustedMarketplaceHosts: dedupe(trustedMarketplaceHosts).slice(0, 5),
+    hardRiskSignals: dedupe(hardRiskSignals).slice(0, 6),
+    softRiskSignals: dedupe(softRiskSignals).slice(0, 5),
+    trustSignals: dedupe(trustSignals).slice(0, 5),
   };
 }

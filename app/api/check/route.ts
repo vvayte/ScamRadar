@@ -6,6 +6,11 @@ import { inspectImageForScam, type ImageInspectionResult } from "@/lib/imageInsp
 import { consumeRateLimit, getClientIp } from "@/lib/requestGuard";
 import { getCommunityRiskHintsForUrls } from "@/lib/communityIntel";
 import {
+  applyUrlSignalsToResult,
+  calibrateRiskResult,
+  scoreToLevel,
+} from "@/lib/riskCalibration";
+import {
   applySuccessfulCheck,
   attachAnonymousCookie,
   canRunCheck,
@@ -30,19 +35,29 @@ function emptyUrlInspection(): UrlInspectionResult {
     extractedText: "",
     riskHints: [],
     fetchErrors: [],
+    trustedMarketplaceHosts: [],
+    hardRiskSignals: [],
+    softRiskSignals: [],
+    trustSignals: [],
   };
-}
-
-function scoreToLevel(score: number): "Low" | "Medium" | "High" {
-  if (score >= 70) return "High";
-  if (score >= 40) return "Medium";
-  return "Low";
 }
 
 function attachRateHeaders(response: NextResponse, remaining: number, retryAfterSeconds: number): NextResponse {
   response.headers.set("X-RateLimit-Remaining", String(remaining));
   response.headers.set("X-RateLimit-RetryAfter", String(retryAfterSeconds));
   return response;
+}
+
+function aiAnalyzerAvailable(): boolean {
+  return Boolean(process.env.OPENAI_API_KEY) || process.env.NODE_ENV === "test";
+}
+
+function withDisplayableReasons(result: RuleResult): RuleResult {
+  if (result.reasons.length > 0) return result;
+  return {
+    ...result,
+    reasons: ["No high-confidence scam indicators matched offline rules."],
+  };
 }
 
 async function parseRequestInput(req: NextRequest): Promise<ParsedRequestInput> {
@@ -88,30 +103,6 @@ function validateImageFile(file: File): string | null {
   return null;
 }
 
-function applyUrlSignals(base: RuleResult, urlInspection: UrlInspectionResult): RuleResult {
-  const uniqueHints = Array.from(new Set(urlInspection.riskHints));
-  const bonus = Math.min(36, uniqueHints.length * 14 + (urlInspection.fetchErrors.length ? 6 : 0));
-  const score = Math.min(100, base.score + bonus);
-  const level = scoreToLevel(score);
-
-  const reasons = Array.from(new Set([...uniqueHints, ...base.reasons])).slice(0, 3);
-
-  let advice = base.advice;
-  if (uniqueHints.length > 0 && score >= 70) {
-    advice =
-      "Do not proceed until you verify the seller independently on the original marketplace platform.";
-  }
-
-  return {
-    ...base,
-    score,
-    level,
-    reasons: reasons.length ? reasons : base.reasons,
-    advice,
-    skipAI: score >= 70 || base.skipAI,
-  };
-}
-
 function withExtraUrlHints(
   inspection: UrlInspectionResult,
   extraHints: string[]
@@ -119,6 +110,7 @@ function withExtraUrlHints(
   return {
     ...inspection,
     riskHints: Array.from(new Set([...inspection.riskHints, ...extraHints])).slice(0, 6),
+    hardRiskSignals: Array.from(new Set([...(inspection.hardRiskSignals || []), ...extraHints])).slice(0, 6),
   };
 }
 
@@ -147,6 +139,9 @@ function buildAnalysisInput(originalText: string, urlInspection: UrlInspectionRe
     "",
     "[Extracted listing context from URLs]",
     urlInspection.extractedText,
+    (urlInspection.trustSignals || []).length
+      ? `[URL trust signals] ${(urlInspection.trustSignals || []).join("; ")}`
+      : "",
     urlInspection.riskHints.length
       ? `[URL risk hints] ${urlInspection.riskHints.join("; ")}`
       : "",
@@ -228,6 +223,16 @@ export async function POST(req: NextRequest) {
           rateDecision.retryAfterSeconds
         );
       }
+      if (!aiAnalyzerAvailable()) {
+        return attachRateHeaders(
+          NextResponse.json(
+            { error: "Image analysis is not configured yet. Try text or URL analysis instead." },
+            { status: 503 }
+          ),
+          rateDecision.remaining,
+          rateDecision.retryAfterSeconds
+        );
+      }
     }
 
     let urlInspection = trimmedText
@@ -240,7 +245,7 @@ export async function POST(req: NextRequest) {
     }
 
     let analysisInput = buildAnalysisInput(trimmedText, urlInspection);
-    let heuristic = applyUrlSignals(applyRules(analysisInput), urlInspection);
+    let heuristic = applyUrlSignalsToResult(applyRules(analysisInput), urlInspection);
 
     if (imageFile) {
       let imageInspection: ImageInspectionResult;
@@ -263,10 +268,14 @@ export async function POST(req: NextRequest) {
           .filter(Boolean)
           .join("\n")
           .slice(0, 7000);
-        heuristic = applyUrlSignals(applyRules(analysisInput), urlInspection);
+        heuristic = applyUrlSignalsToResult(applyRules(analysisInput), urlInspection);
       }
 
-      const mergedResult = mergeImageSignals(heuristic, imageInspection);
+      const mergedResult = calibrateRiskResult(
+        mergeImageSignals(heuristic, imageInspection),
+        urlInspection,
+        { evidenceReasons: [...heuristic.reasons, ...imageInspection.riskHints] }
+      );
       const usage = await applySuccessfulCheck({
         subject: usageSubject,
         input: analysisInput || trimmedText || "[image upload]",
@@ -278,20 +287,21 @@ export async function POST(req: NextRequest) {
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
 
-    if (heuristic.skipAI) {
+    if (heuristic.skipAI || !aiAnalyzerAvailable()) {
+      const finalHeuristic = withDisplayableReasons(heuristic);
       const usage = await applySuccessfulCheck({
         subject: usageSubject,
         input: trimmedText,
-        result: heuristic,
+        result: finalHeuristic,
         hasImage: false,
       });
-      const response = NextResponse.json({ ...heuristic, usage });
+      const response = NextResponse.json({ ...finalHeuristic, usage });
       attachAnonymousCookie(response, usageSubject);
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
 
     const systemPrompt =
-      'You are a security assistant specialising in fraud detection. A user has submitted text they suspect might be a scam. Respond ONLY in JSON with keys: "score" (0-100), "level" (Low, Medium, High), "reasons" (array of up to 3 short reasons), and "advice" (a concise sentence advising the user). Do not include any additional text.';
+      'You are a security assistant specialising in fraud detection. A user has submitted text, URLs, or listing context for scam analysis. Respond ONLY in JSON with keys: "score" (0-100), "level" (Low, Medium, High), "reasons" (array of up to 3 short reasons), and "advice" (a concise sentence advising the user). Do not mark normal known marketplace or product URLs as High Risk unless the provided context contains concrete scam evidence such as a clone domain, off-platform payment/contact, high-risk payment method, sensitive-info request, or community reports. Do not use vague unsupported reasons like unsolicited link, potential fake product, or lack of product detail.';
     const userPrompt = `Text to evaluate:\n${analysisInput}`;
 
     const completion = await openai.chat.completions.create({
@@ -309,13 +319,14 @@ export async function POST(req: NextRequest) {
     try {
       payload = JSON.parse(completion.choices[0].message.content);
     } catch {
+      const finalHeuristic = withDisplayableReasons(heuristic);
       const usage = await applySuccessfulCheck({
         subject: usageSubject,
         input: trimmedText,
-        result: heuristic,
+        result: finalHeuristic,
         hasImage: false,
       });
-      const response = NextResponse.json({ ...heuristic, usage });
+      const response = NextResponse.json({ ...finalHeuristic, usage });
       attachAnonymousCookie(response, usageSubject);
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
@@ -333,13 +344,19 @@ export async function POST(req: NextRequest) {
       : heuristic.reasons;
     const advice = typeof payload.advice === "string" ? payload.advice : heuristic.advice;
 
-    const result = {
-      score,
-      level,
-      reasons,
-      advice,
-      skipAI: false,
-    };
+    const supportedUrlHardSignals = urlInspection.hardRiskSignals || [];
+    const evidenceAdjustedScore = supportedUrlHardSignals.length ? Math.max(score, heuristic.score) : score;
+    const result = calibrateRiskResult(
+      {
+        score: evidenceAdjustedScore,
+        level: supportedUrlHardSignals.length ? scoreToLevel(evidenceAdjustedScore) : level,
+        reasons: Array.from(new Set([...supportedUrlHardSignals, ...reasons])).slice(0, 3),
+        advice,
+        skipAI: false,
+      },
+      urlInspection,
+      { evidenceReasons: [...heuristic.reasons, ...supportedUrlHardSignals] }
+    );
     const usage = await applySuccessfulCheck({
       subject: usageSubject,
       input: trimmedText,

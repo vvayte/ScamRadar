@@ -36,6 +36,23 @@ function useCountUp(target: number, durationMs = 1200) {
   return value;
 }
 
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("Copy command failed.");
+}
+
 export default function ResultCard({ result, partial = false }: ResultCardProps) {
   const { score, level, reasons, advice } = result;
   const [copied, setCopied] = useState(false);
@@ -79,13 +96,14 @@ export default function ResultCard({ result, partial = false }: ResultCardProps)
   const copyAdvice = async () => {
     if (!advice || partial) return;
     try {
-      await navigator.clipboard.writeText(advice);
+      await copyText(advice);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {}
   };
 
   const displayScore = Math.round(animatedScore);
+  const reasonsHeading = riskLevel === "Low" ? "What we checked" : "Risk signals found";
 
   return (
     <div className={`fade-in-up mt-6 overflow-hidden rounded-3xl border ${palette.ring} bg-gradient-to-b ${palette.bg}`}>
@@ -120,7 +138,7 @@ export default function ResultCard({ result, partial = false }: ResultCardProps)
       </div>
 
       <div className="p-6 md:p-8">
-        <div className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-white/45">Why this is risky</div>
+        <div className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-white/45">{reasonsHeading}</div>
 
         <ul className="space-y-3">
           {reasons.slice(0, partial ? 1 : 3).map((reason, idx) => (
@@ -151,6 +169,7 @@ export default function ResultCard({ result, partial = false }: ResultCardProps)
             <div className="text-xs uppercase tracking-[0.2em] text-white/45">What to do next</div>
             {!partial && advice ? (
               <button
+                type="button"
                 onClick={copyAdvice}
                 className="rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1 text-xs font-semibold text-white/75 transition hover:bg-white/[0.12]"
               >

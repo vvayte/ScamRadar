@@ -66,6 +66,60 @@ type UsageSnapshot = {
   freeLimit: number;
 };
 
+function createClientId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeDbHistoryItems(items?: DbHistoryItem[]): HistoryItem[] {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, 20).map((item) => ({
+    id: String(item.id || createClientId()),
+    createdAt: String(item.createdAt || new Date().toISOString()),
+    input: String(item.input || ""),
+    hasImage: Boolean(item.hasImage),
+    result: {
+      score: Number(item.score) || 0,
+      level: String(item.level || "Low"),
+      reasons: Array.isArray(item.reasons) ? item.reasons.slice(0, 3).map(String) : [],
+      advice: String(item.advice || ""),
+    },
+  }));
+}
+
+function historyDedupeKey(item: HistoryItem): string {
+  return `${item.id || ""}|${item.createdAt || ""}|${item.input}|${item.result.score}`;
+}
+
+function historyTime(item: HistoryItem): number {
+  const time = new Date(item.createdAt).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function mergeHistoryItems(cloudHistory: HistoryItem[], localHistory: HistoryItem[]): HistoryItem[] {
+  const seen = new Set<string>();
+  return [...cloudHistory, ...localHistory]
+    .filter((item) => {
+      const key = historyDedupeKey(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => historyTime(b) - historyTime(a))
+    .slice(0, 20);
+}
+
+function normalizeWatchlistItems(items?: string[]): string[] {
+  if (!Array.isArray(items)) return [];
+  return items.map((entry) => String(entry).trim().toLowerCase()).filter(Boolean).slice(0, 50);
+}
+
+function mergeWatchlistItems(cloudWatchlist: string[], localWatchlist: string[]): string[] {
+  return Array.from(new Set([...cloudWatchlist, ...localWatchlist])).slice(0, 50);
+}
+
 function safeParse<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -105,6 +159,24 @@ function reportTextFromAnalysis(params: {
   ].join("\n");
 }
 
+async function copyTextFallback(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("Copy command failed.");
+}
+
 export default function HomePage() {
   const [text, setText] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -125,6 +197,7 @@ export default function HomePage() {
   const [reportNotes, setReportNotes] = useState("");
   const [reportPlatform, setReportPlatform] = useState("");
   const [reportStatus, setReportStatus] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const [showReportForm, setShowReportForm] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
   const [appOrigin, setAppOrigin] = useState("https://scamradar.app");
@@ -139,34 +212,25 @@ export default function HomePage() {
   const inputSectionRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const hydrateDbUser = (user: DbUser) => {
+  const hydrateDbUser = (user: DbUser, options: { mergeLocal?: boolean } = {}) => {
     setDbUser(user);
     setPremium(Boolean(user.premium));
     setCredits(Math.max(0, Number(user.credits) || 0));
     setCount(Math.max(0, Number(user.count) || 0));
     persistState(Math.max(0, Number(user.count) || 0), Boolean(user.premium), Math.max(0, Number(user.credits) || 0));
 
-    if (Array.isArray(user.history)) {
-      const cloudHistory: HistoryItem[] = user.history.slice(0, 20).map((item) => ({
-        id: String(item.id || crypto.randomUUID()),
-        createdAt: String(item.createdAt || new Date().toISOString()),
-        input: String(item.input || ""),
-        hasImage: Boolean(item.hasImage),
-        result: {
-          score: Number(item.score) || 0,
-          level: String(item.level || "Low"),
-          reasons: Array.isArray(item.reasons) ? item.reasons.slice(0, 3).map(String) : [],
-          advice: String(item.advice || ""),
-        },
-      }));
-      setHistory(cloudHistory);
-      persistHistory(cloudHistory);
-    }
+    const cloudHistory = normalizeDbHistoryItems(user.history);
+    const cloudWatchlist = normalizeWatchlistItems(user.watchlist);
+    const nextHistory = options.mergeLocal ? mergeHistoryItems(cloudHistory, history) : cloudHistory;
+    const nextWatchlist = options.mergeLocal ? mergeWatchlistItems(cloudWatchlist, watchlist) : cloudWatchlist;
 
-    if (Array.isArray(user.watchlist)) {
-      const cloudWatchlist = user.watchlist.slice(0, 50).map((entry) => String(entry));
-      setWatchlist(cloudWatchlist);
-      persistWatchlist(cloudWatchlist);
+    setHistory(nextHistory);
+    persistHistory(nextHistory);
+    setWatchlist(nextWatchlist);
+    persistWatchlist(nextWatchlist);
+
+    if (options.mergeLocal) {
+      void syncToDbAccount({ history: nextHistory, watchlist: nextWatchlist }, true);
     }
   };
 
@@ -261,6 +325,8 @@ export default function HomePage() {
     } as HistoryItem;
   }, [history, result, lastAnalysisAt, lastAnalysisInput, imageFile]);
 
+  const checkDisabled = loading || (!text.trim() && !imageFile);
+
   const clearImageSelection = () => {
     setImageFile(null);
     if (galleryInputRef.current) galleryInputRef.current.value = "";
@@ -318,8 +384,8 @@ export default function HomePage() {
   const syncToDbAccount = async (overrides?: {
     history?: HistoryItem[];
     watchlist?: string[];
-  }) => {
-    if (!dbUser) return;
+  }, force = false) => {
+    if (!dbUser && !force) return;
     try {
       const response = await fetch("/api/account/sync", {
         method: "POST",
@@ -369,13 +435,14 @@ export default function HomePage() {
   };
 
   const submitReport = async () => {
-    if (!latestHistoryItem) return;
+    if (!latestHistoryItem || reportSubmitting) return;
     const indicatorValue = extractFirstUrl(latestHistoryItem.input) || latestHistoryItem.input.slice(0, 300);
     if (!indicatorValue) {
       setReportStatus("No indicator found to report.");
       return;
     }
     setReportStatus("Submitting report...");
+    setReportSubmitting(true);
     try {
       const response = await fetch("/api/report", {
         method: "POST",
@@ -399,6 +466,8 @@ export default function HomePage() {
       setShowReportForm(false);
     } catch {
       setReportStatus("Network error while submitting report.");
+    } finally {
+      setReportSubmitting(false);
     }
   };
 
@@ -414,11 +483,11 @@ export default function HomePage() {
         await navigator.share({ title: "ScamRadar Risk Report", text: reportText.slice(0, 2800) });
         setShareStatus("Report shared.");
       } else {
-        await navigator.clipboard.writeText(reportText);
+        await copyTextFallback(reportText);
         setShareStatus("Report copied to clipboard.");
       }
     } catch {
-      setShareStatus("Sharing cancelled.");
+      setShareStatus("Share was not completed.");
     }
   };
 
@@ -460,8 +529,16 @@ export default function HomePage() {
   };
 
   const handleCheck = async () => {
+    if (loading) return;
     const trimmed = text.trim();
     if (!trimmed && !imageFile) return;
+
+    if (!premium && credits <= 0 && count >= FREE_CHECK_LIMIT) {
+      setShowPaywall(true);
+      setError("Your free checks are used. Upgrade Shield or buy a one-off check to continue.");
+      inputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
 
     setLoading(true);
     setShowPaywall(false);
@@ -600,7 +677,7 @@ export default function HomePage() {
                 {dbUser.name || dbUser.email.split("@")[0]}
               </Link>
             ) : (
-              <button onClick={() => setShowAuthModal(true)} className="text-sm text-white/70 transition hover:text-white">
+              <button type="button" onClick={() => setShowAuthModal(true)} className="text-sm text-white/70 transition hover:text-white">
                 Sign in
               </button>
             )}
@@ -630,6 +707,22 @@ export default function HomePage() {
               <Link onClick={() => setMobileMenuOpen(false)} href="/reviews" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Reviews</Link>
               <Link onClick={() => setMobileMenuOpen(false)} href="/bot" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Bot API</Link>
               <Link onClick={() => setMobileMenuOpen(false)} href="/pricing" className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">Pricing</Link>
+              {dbUser ? (
+                <Link onClick={() => setMobileMenuOpen(false)} href="/account" className="rounded-lg px-3 py-2 font-semibold text-cyan-200 hover:bg-white/5">
+                  Account
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShowAuthModal(true);
+                  }}
+                  className="rounded-lg px-3 py-2 text-left text-white/80 hover:bg-white/5"
+                >
+                  Sign in
+                </button>
+              )}
               <Link onClick={() => setMobileMenuOpen(false)} href="#checker" className="rounded-lg bg-cyan-500 px-3 py-2 font-bold text-white">Check now — free</Link>
             </div>
           </div>
@@ -763,8 +856,9 @@ export default function HomePage() {
             ) : null}
 
             <button
+              type="button"
               onClick={handleCheck}
-              disabled={loading}
+              disabled={checkDisabled}
               className="primary-cta press touch-manipulation mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-60 md:text-base"
             >
               {loading ? (
@@ -809,19 +903,20 @@ export default function HomePage() {
             <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap gap-1.5">
-                  <button onClick={shareReport} className="rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/[0.12]">
+                  <button type="button" onClick={shareReport} className="rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/[0.12]">
                     Share
                   </button>
-                  <button onClick={exportReport} className="rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/[0.12]">
+                  <button type="button" onClick={exportReport} className="rounded-lg border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/[0.12]">
                     Export
                   </button>
-                  <button onClick={() => setShowReportForm((prev) => !prev)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
+                  <button type="button" onClick={() => setShowReportForm((prev) => !prev)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-cyan-100 transition hover:bg-cyan-500/25">
                     Report
                   </button>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-white/65">
                   <span>Correct?</span>
                   <button
+                    type="button"
                     onClick={() => setFeedbackGiven("correct")}
                     className={`rounded-full border px-2 py-0.5 transition ${feedbackGiven === "correct" ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200" : "border-white/15 hover:bg-white/10"}`}
                     aria-label="Mark feedback as correct"
@@ -829,6 +924,7 @@ export default function HomePage() {
                     👍
                   </button>
                   <button
+                    type="button"
                     onClick={() => setFeedbackGiven("wrong")}
                     className={`rounded-full border px-2 py-0.5 transition ${feedbackGiven === "wrong" ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-200" : "border-white/15 hover:bg-white/10"}`}
                     aria-label="Mark feedback as wrong"
@@ -858,8 +954,13 @@ export default function HomePage() {
                     placeholder="Extra details (optional)"
                     className="h-16 w-full resize-none rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-xs text-white outline-none placeholder:text-white/40"
                   />
-                  <button onClick={submitReport} className="rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-cyan-400">
-                    Submit report
+                  <button
+                    type="button"
+                    onClick={submitReport}
+                    disabled={reportSubmitting}
+                    className="rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {reportSubmitting ? "Submitting..." : "Submit report"}
                   </button>
                 </div>
               ) : null}
@@ -1142,7 +1243,7 @@ export default function HomePage() {
             ["How accurate is the score?", "Scores combine rule-based signals, URL/marketplace extraction, image analysis, and AI interpretation. Treat high-risk results as a strong warning. False-positive rate sits under 4% in human review."],
             ["Can I check screenshots from mobile?", "Yes — upload from gallery or capture from camera on iOS and Android directly in the browser. No install required."],
             ["Is my data private?", "We don't sell or share analysis data. Local-first storage is the default; cloud sync is opt-in when you create an account."],
-            ["What happens after my free checks?", "Unlock more with a $0.99 single pass, Shield Monthly ($4.99/mo with 3-day free trial), or Shield Yearly ($29.99/yr — 50% off). Cancel anytime."],
+            ["What happens after my free checks?", "Unlock more with a $0.99 single pass, Shield Monthly ($4.99/mo), or Shield Yearly ($29.99/yr — 50% off). Promo codes are accepted at checkout. Cancel anytime."],
             ["Do you offer a bot or API?", "Yes — connect Telegram or WhatsApp bots via our Bot API. See the Bot API docs for details."],
           ].map(([q, a]) => (
             <details key={q} className="group rounded-xl border border-white/10 bg-black/25 p-3.5 transition hover:border-white/20 md:p-4">
@@ -1211,7 +1312,7 @@ export default function HomePage() {
         show={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={(user) => {
-          hydrateDbUser(user);
+          hydrateDbUser(user, { mergeLocal: true });
         }}
       />
     </main>
