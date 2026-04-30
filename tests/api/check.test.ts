@@ -379,6 +379,76 @@ describe('POST /api/check', () => {
     expect(payload.reasons.join(' ')).not.toMatch(/lack of detail/i);
   });
 
+  it('short-circuits the exact completed Russian purchase text before OpenAI', async () => {
+    createCompletionMock.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              score: 90,
+              level: 'High',
+              reasons: ['Non-English text', 'Suspicious characters', 'Lack of context'],
+              advice: 'Exercise caution.',
+            }),
+          },
+        },
+      ],
+    });
+
+    const request = new Request('http://localhost/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text:
+          '\u044f \u043f\u043e\u043b\u0443\u0447\u0438\u043b \u0442\u043e\u0432\u0430\u0440, \u0432\u0441\u0435 \u043f\u0440\u043e\u0448\u043b\u043e \u043f\u0440\u0435\u043a\u0440\u0430\u0441\u043d\u043e, \u0442\u043e\u0432\u0430\u0440 \u0441\u0435\u0431\u044f \u043e\u043f\u0440\u0430\u0432\u0434\u0430\u043b, \u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043e\u0442\u043e\u043c \u044f \u0441\u043a\u0438\u043d\u0443\u043b \u0434\u0435\u043d\u044c\u0433\u0438 \u0437\u0430 \u044d\u0442\u043e\u0442 \u0442\u043e\u0432\u0430\u0440, \u044f \u0432\u0441\u0435 \u043f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u043e \u0441\u0434\u0435\u043b\u0430\u043b?',
+      }),
+    });
+
+    const response = await POST(request as any);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.level).toBe('Low');
+    expect(payload.score).toBe(10);
+    expect(payload.skipAI).toBe(true);
+    expect(payload.reasons).toContain('Item was already received');
+    expect(createCompletionMock).not.toHaveBeenCalled();
+  });
+
+  it('still lets unresolved Russian delivery complaints reach AI', async () => {
+    createCompletionMock.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              score: 82,
+              level: 'High',
+              reasons: ['Payment sent but item was not received'],
+              advice: 'Do not send more money and dispute the payment.',
+            }),
+          },
+        },
+      ],
+    });
+
+    const request = new Request('http://localhost/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text:
+          '\u044f \u0441\u043a\u0438\u043d\u0443\u043b \u0434\u0435\u043d\u044c\u0433\u0438, \u043d\u043e \u043d\u0435 \u043f\u043e\u043b\u0443\u0447\u0438\u043b \u0442\u043e\u0432\u0430\u0440, \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446 \u043f\u0440\u043e\u043f\u0430\u043b',
+      }),
+    });
+
+    const response = await POST(request as any);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.level).toBe('High');
+    expect(payload.score).toBe(82);
+    expect(createCompletionMock).toHaveBeenCalledOnce();
+  });
+
   it('keeps completed Russian transactions low even when AI overreacts to money language', async () => {
     createCompletionMock.mockResolvedValue({
       choices: [

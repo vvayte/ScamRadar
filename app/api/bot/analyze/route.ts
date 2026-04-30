@@ -11,6 +11,90 @@ import {
 
 export const runtime = "nodejs";
 
+function completedTransactionPayload() {
+  return {
+    score: 10,
+    level: "Low",
+    reasons: [
+      "Item was already received",
+      "Payment happened after delivery",
+      "No hard scam indicators found",
+    ],
+    advice:
+      "This sounds low risk: receiving the item before paying is generally safer. Keep receipts and payment records.",
+    skipAI: true,
+  };
+}
+
+function isClearlyCompletedPurchaseWithoutComplaint(text: string): boolean {
+  const normalized = text.toLowerCase().normalize("NFKC");
+  if (!normalized.trim() || /https?:\/\//i.test(normalized)) return false;
+
+  const complaintSignals = [
+    "\u043d\u0435 \u043f\u043e\u043b\u0443\u0447\u0438\u043b",
+    "\u043d\u0435 \u043f\u043e\u043b\u0443\u0447\u0438\u043b\u0430",
+    "\u0442\u043e\u0432\u0430\u0440 \u043d\u0435",
+    "\u043d\u0435 \u043f\u0440\u0438\u0448",
+    "\u043d\u0435 \u0434\u043e\u0448",
+    "\u043e\u0431\u043c\u0430\u043d",
+    "\u043a\u0438\u043d\u0443\u043b",
+    "\u043a\u0438\u043d\u0443\u043b\u0438",
+    "\u043f\u0440\u043e\u043f\u0430\u043b",
+    "\u0432\u043e\u0437\u0432\u0440\u0430\u0442",
+    "\u0441\u043f\u043e\u0440",
+    "\u0437\u0430\u0431\u043b\u043e\u043a",
+    "never received",
+    "did not receive",
+    "didn't receive",
+    "not delivered",
+    "refund",
+    "dispute",
+    "scammed",
+  ];
+  if (complaintSignals.some((signal) => normalized.includes(signal))) return false;
+
+  const receivedSignals = [
+    "\u043f\u043e\u043b\u0443\u0447\u0438\u043b \u0442\u043e\u0432\u0430\u0440",
+    "\u043f\u043e\u043b\u0443\u0447\u0438\u043b\u0430 \u0442\u043e\u0432\u0430\u0440",
+    "\u0442\u043e\u0432\u0430\u0440 \u043f\u043e\u043b\u0443\u0447\u0438\u043b",
+    "\u0442\u043e\u0432\u0430\u0440 \u043f\u043e\u043b\u0443\u0447\u0438\u043b\u0430",
+    "\u0442\u043e\u0432\u0430\u0440 \u043f\u043e\u043b\u0443\u0447\u0435\u043d",
+    "\u0442\u043e\u0432\u0430\u0440 \u043f\u0440\u0438\u0448",
+    "\u0442\u043e\u0432\u0430\u0440 \u0434\u043e\u0448",
+    "received the item",
+    "received the product",
+    "item was delivered",
+    "product was delivered",
+  ];
+
+  const reassuringSignals = [
+    "\u0432\u0441\u0435 \u043f\u0440\u043e\u0448\u043b\u043e",
+    "\u0432\u0441\u0451 \u043f\u0440\u043e\u0448\u043b\u043e",
+    "\u043f\u0440\u043e\u0448\u043b\u043e \u043f\u0440\u0435\u043a\u0440\u0430\u0441\u043d\u043e",
+    "\u0442\u043e\u0432\u0430\u0440 \u0441\u0435\u0431\u044f \u043e\u043f\u0440\u0430\u0432\u0434\u0430\u043b",
+    "\u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043e\u0442\u043e\u043c",
+    "\u043f\u043e\u0441\u043b\u0435 \u043f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u044f",
+    "\u043e\u043f\u043b\u0430\u0442\u0438\u043b \u043f\u043e\u0441\u043b\u0435",
+    "\u0437\u0430\u043f\u043b\u0430\u0442\u0438\u043b \u043f\u043e\u0441\u043b\u0435",
+    "\u0441\u043a\u0438\u043d\u0443\u043b \u0434\u0435\u043d\u044c\u0433\u0438",
+    "everything went well",
+    "everything went great",
+    "paid after",
+  ];
+
+  return (
+    receivedSignals.some((signal) => normalized.includes(signal)) &&
+    reassuringSignals.some((signal) => normalized.includes(signal))
+  );
+}
+
+function isCompletedPurchaseSafeText(text: string): boolean {
+  return (
+    isClearlyCompletedPurchaseWithoutComplaint(text) ||
+    isCompletedLowRiskTransactionText(text)
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const expectedToken = process.env.BOT_API_TOKEN || "";
@@ -33,18 +117,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing text." }, { status: 400 });
     }
 
-    if (!/https?:\/\//i.test(text) && isCompletedLowRiskTransactionText(text)) {
+    if (!/https?:\/\//i.test(text) && isCompletedPurchaseSafeText(text)) {
       return NextResponse.json({
-        score: 10,
-        level: "Low",
-        reasons: [
-          "Item was already received",
-          "Payment happened after delivery",
-          "No hard scam indicators found",
-        ],
-        advice:
-          "This sounds low risk: receiving the item before paying is generally safer. Keep receipts and payment records.",
-        skipAI: true,
+        ...completedTransactionPayload(),
         source: "heuristic",
       });
     }
@@ -63,7 +138,7 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean).join("\n").slice(0, 7000);
     const heuristic = applyUrlSignalsToResult(applyRules(combined), urlInspection);
 
-    if (isCompletedLowRiskTransactionText(text) && !(urlInspection.hardRiskSignals || []).length) {
+    if (isCompletedPurchaseSafeText(text) && !(urlInspection.hardRiskSignals || []).length) {
       return NextResponse.json({
         ...calibrateRiskResult(heuristic, urlInspection, { evidenceReasons: heuristic.reasons }),
         source: "heuristic",
@@ -131,13 +206,17 @@ export async function POST(req: NextRequest) {
       urlInspection,
       { evidenceReasons: [...heuristic.reasons, ...supportedUrlHardSignals] }
     );
+    const finalResult =
+      isCompletedPurchaseSafeText(text) && supportedUrlHardSignals.length === 0
+        ? completedTransactionPayload()
+        : result;
 
     return NextResponse.json({
-      score: result.score,
-      level: result.level,
-      reasons: result.reasons,
-      advice: result.advice,
-      source: "ai",
+      score: finalResult.score,
+      level: finalResult.level,
+      reasons: finalResult.reasons,
+      advice: finalResult.advice,
+      source: finalResult.skipAI ? "heuristic" : "ai",
     });
   } catch (error) {
     console.error(error);
