@@ -3,6 +3,11 @@ import bcrypt from "bcryptjs";
 import { randomBytes, randomInt } from "crypto";
 import db from "@/lib/db";
 import { sendTransactionalEmail } from "@/lib/emailDelivery";
+import {
+  ANON_USAGE_COOKIE,
+  ipHashFromRequest,
+  mergeAnonymousIntoUser,
+} from "@/lib/usage";
 
 export const runtime = "nodejs";
 
@@ -43,19 +48,33 @@ function publicUser(user: {
   };
 }
 
-async function createSessionResponse(user: {
-  id: string;
-  email: string;
-  name: string | null;
-  premium: boolean;
-  credits: number;
-  count?: number;
-}) {
+async function createSessionResponse(
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    premium: boolean;
+    credits: number;
+    count?: number;
+  },
+  options: { anonymousKey: string | null; ipHash: string }
+) {
+  // Merge anonymous device usage and IP-fingerprint usage into the new
+  // account so a fresh signup cannot reset free-check allowance.
+  await mergeAnonymousIntoUser({
+    userId: user.id,
+    anonymousKey: options.anonymousKey,
+    ipHash: options.ipHash,
+  });
+
+  const refreshed = await db.user.findUnique({ where: { id: user.id } });
+  const merged = refreshed || user;
+
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await db.session.create({ data: { token, userId: user.id, expiresAt } });
 
-  const res = NextResponse.json({ user: publicUser(user) });
+  const res = NextResponse.json({ user: publicUser(merged) });
   res.cookies.set("sr_session", token, {
     httpOnly: true,
     sameSite: "lax",
@@ -63,14 +82,17 @@ async function createSessionResponse(user: {
     expires: expiresAt,
     path: "/",
   });
+  // Drop the anonymous cookie — its usage was just merged into the account.
+  res.cookies.set(ANON_USAGE_COOKIE, "", { maxAge: 0, path: "/" });
   return res;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, code } = (await req.json()) as {
+    const { email, password, confirmPassword, name, code } = (await req.json()) as {
       email?: string;
       password?: string;
+      confirmPassword?: string;
       name?: string;
       code?: string;
     };
@@ -86,11 +108,17 @@ export async function POST(req: NextRequest) {
     if (password.length < 8) {
       return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
     }
+    if (typeof confirmPassword === "string" && confirmPassword !== password) {
+      return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
+    }
 
     const existing = await db.user.findUnique({ where: { email: emailNorm } });
     if (existing) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
     }
+
+    const ipHash = ipHashFromRequest(req);
+    const anonymousKey = req.cookies.get(ANON_USAGE_COOKIE)?.value?.trim() || null;
 
     if (shouldRequireEmailVerification()) {
       const submittedCode = String(code || "").replace(/\D/g, "");
@@ -133,7 +161,7 @@ export async function POST(req: NextRequest) {
           },
         });
         await db.emailVerificationCode.delete({ where: { email: emailNorm } }).catch(() => {});
-        return createSessionResponse(user);
+        return createSessionResponse(user, { anonymousKey, ipHash });
       }
 
       const verificationCode = randomInt(0, 1_000_000).toString().padStart(6, "0");
@@ -202,7 +230,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return createSessionResponse(user);
+    return createSessionResponse(user, { anonymousKey, ipHash });
   } catch (err) {
     console.error("Register error", err);
     return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 });

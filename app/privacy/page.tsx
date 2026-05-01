@@ -1,4 +1,5 @@
-import Link from "next/link";
+import PublicHeader from "@/components/PublicHeader";
+import PublicFooter from "@/components/PublicFooter";
 
 export const metadata = {
   title: "Privacy Policy | ScamRadar",
@@ -8,14 +9,11 @@ export default function PrivacyPage() {
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@scamradar.app";
 
   return (
-    <main className="site-shell min-h-screen px-4 py-10 text-white md:px-6">
-      <div className="mx-auto w-full max-w-4xl rounded-3xl border border-white/12 bg-black/35 p-6 md:p-10">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <h1 className="text-3xl font-black md:text-5xl">Privacy Policy</h1>
-          <Link href="/" className="text-sm text-white/70 transition hover:text-white">
-            Back to app
-          </Link>
-        </div>
+    <div className="site-shell flex min-h-screen flex-col text-white">
+      <PublicHeader />
+      <main className="flex-1 px-4 py-10 md:px-6">
+        <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/8 bg-white/[0.025] p-6 md:p-10">
+          <h1 className="text-3xl font-bold md:text-4xl">Privacy Policy</h1>
 
         <div className="space-y-6 text-sm leading-7 text-white/80 md:text-base">
           <p>
@@ -93,7 +91,9 @@ export default function PrivacyPage() {
             </p>
           </section>
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+      <PublicFooter />
+    </div>
   );
 }

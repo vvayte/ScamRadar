@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import stripe from '@/lib/stripe';
 import db from '@/lib/db';
-import { PLAN_CONFIG, isPlanType } from '@/lib/billing';
+import {
+  PLAN_CONFIG,
+  currencyForCountry,
+  detectCountry,
+  isPlanType,
+  resolvePriceForPlan,
+} from '@/lib/billing';
 import {
   ANON_USAGE_COOKIE,
   attachAnonymousCookie,
@@ -21,7 +27,9 @@ export async function POST(req: NextRequest) {
     }
 
     const config = PLAN_CONFIG[type];
-    const priceId = process.env[config.envKey];
+    const country = detectCountry(req.headers);
+    const desiredCurrency = currencyForCountry(country);
+    const { priceId, currency } = resolvePriceForPlan(type, desiredCurrency);
 
     if (!priceId) {
       return NextResponse.json({ error: `Price ID not configured for ${type}` }, { status: 500 });
@@ -45,6 +53,8 @@ export async function POST(req: NextRequest) {
         planType: type,
         userId: user?.id || '',
         anonymousKey: anonymousKey || '',
+        country: country || '',
+        currency,
       },
       client_reference_id: user?.id || anonymousKey,
     };
@@ -76,7 +86,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const response = NextResponse.json({ url: session.url });
+    const response = NextResponse.json({ url: session.url, currency });
     if (subject) {
       attachAnonymousCookie(response, subject);
     } else if (req.cookies.get(ANON_USAGE_COOKIE)?.value) {

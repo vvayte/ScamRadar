@@ -14,10 +14,12 @@ import {
 import {
   applySuccessfulCheck,
   attachAnonymousCookie,
-  canRunCheck,
+  canRunCheckStrict,
   resolveUsageSubject,
   usageSnapshot,
 } from "@/lib/usage";
+import { buildAnalysisArtifacts, type AnalysisArtifact } from "@/lib/analysisArtifacts";
+import { explainSignals } from "@/lib/signalExplanations";
 
 export const runtime = "nodejs";
 
@@ -29,6 +31,30 @@ type ParsedRequestInput = {
   text: string;
   imageFile: File | null;
 };
+
+function withForensics(
+  result: { score: number; level: string; reasons: string[]; advice: string; skipAI?: boolean },
+  options: {
+    urlInspection?: UrlInspectionResult | null;
+    imageInspection?: ImageInspectionResult | null;
+    communityHints?: string[];
+    hasImage: boolean;
+  }
+): {
+  score: number;
+  level: string;
+  reasons: string[];
+  advice: string;
+  skipAI?: boolean;
+  artifacts: AnalysisArtifact[];
+  signalExplanations: string[];
+} {
+  return {
+    ...result,
+    artifacts: buildAnalysisArtifacts(options),
+    signalExplanations: explainSignals(result.reasons || [], result.level),
+  };
+}
 
 function emptyUrlInspection(): UrlInspectionResult {
   return {
@@ -265,7 +291,8 @@ export async function POST(req: NextRequest) {
     }
 
     const usageSubject = await resolveUsageSubject(req);
-    if (!canRunCheck(usageSubject)) {
+    const { allowed: allowedToRun } = await canRunCheckStrict(usageSubject);
+    if (!allowedToRun) {
       const response = NextResponse.json(
         {
           error: "Your free checks are used. Upgrade Shield or buy a one-off check to continue.",
@@ -334,7 +361,10 @@ export async function POST(req: NextRequest) {
         result: safeResult,
         hasImage: false,
       });
-      const response = NextResponse.json({ ...safeResult, usage });
+      const response = NextResponse.json({
+        ...withForensics(safeResult, { hasImage: false }),
+        usage,
+      });
       attachAnonymousCookie(response, usageSubject);
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
@@ -366,7 +396,14 @@ export async function POST(req: NextRequest) {
         result: finalHeuristic,
         hasImage: false,
       });
-      const response = NextResponse.json({ ...finalHeuristic, usage });
+      const response = NextResponse.json({
+        ...withForensics(finalHeuristic, {
+          urlInspection,
+          communityHints,
+          hasImage: false,
+        }),
+        usage,
+      });
       attachAnonymousCookie(response, usageSubject);
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
@@ -406,7 +443,15 @@ export async function POST(req: NextRequest) {
         result: mergedResult,
         hasImage: true,
       });
-      const response = NextResponse.json({ ...mergedResult, usage });
+      const response = NextResponse.json({
+        ...withForensics(mergedResult, {
+          urlInspection,
+          imageInspection,
+          communityHints,
+          hasImage: true,
+        }),
+        usage,
+      });
       attachAnonymousCookie(response, usageSubject);
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
@@ -419,7 +464,14 @@ export async function POST(req: NextRequest) {
         result: finalHeuristic,
         hasImage: false,
       });
-      const response = NextResponse.json({ ...finalHeuristic, usage });
+      const response = NextResponse.json({
+        ...withForensics(finalHeuristic, {
+          urlInspection,
+          communityHints,
+          hasImage: false,
+        }),
+        usage,
+      });
       attachAnonymousCookie(response, usageSubject);
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
@@ -450,7 +502,14 @@ export async function POST(req: NextRequest) {
         result: finalHeuristic,
         hasImage: false,
       });
-      const response = NextResponse.json({ ...finalHeuristic, usage });
+      const response = NextResponse.json({
+        ...withForensics(finalHeuristic, {
+          urlInspection,
+          communityHints,
+          hasImage: false,
+        }),
+        usage,
+      });
       attachAnonymousCookie(response, usageSubject);
       return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
     }
@@ -493,7 +552,14 @@ export async function POST(req: NextRequest) {
       result: finalResult,
       hasImage: false,
     });
-    const response = NextResponse.json({ ...finalResult, usage });
+    const response = NextResponse.json({
+      ...withForensics(finalResult, {
+        urlInspection,
+        communityHints,
+        hasImage: false,
+      }),
+      usage,
+    });
     attachAnonymousCookie(response, usageSubject);
     return attachRateHeaders(response, rateDecision.remaining, rateDecision.retryAfterSeconds);
   } catch (error) {

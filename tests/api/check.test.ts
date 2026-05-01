@@ -8,7 +8,7 @@ const {
   getClientIpMock,
   getCommunityRiskHintsForUrlsMock,
   resolveUsageSubjectMock,
-  canRunCheckMock,
+  canRunCheckStrictMock,
   usageSnapshotMock,
   applySuccessfulCheckMock,
   attachAnonymousCookieMock,
@@ -20,7 +20,7 @@ const {
   getClientIpMock: vi.fn(),
   getCommunityRiskHintsForUrlsMock: vi.fn(),
   resolveUsageSubjectMock: vi.fn(),
-  canRunCheckMock: vi.fn(),
+  canRunCheckStrictMock: vi.fn(),
   usageSnapshotMock: vi.fn(),
   applySuccessfulCheckMock: vi.fn(),
   attachAnonymousCookieMock: vi.fn(),
@@ -55,7 +55,7 @@ vi.mock('@/lib/communityIntel', () => ({
 
 vi.mock('@/lib/usage', () => ({
   resolveUsageSubject: resolveUsageSubjectMock,
-  canRunCheck: canRunCheckMock,
+  canRunCheckStrict: canRunCheckStrictMock,
   usageSnapshot: usageSnapshotMock,
   applySuccessfulCheck: applySuccessfulCheckMock,
   attachAnonymousCookie: attachAnonymousCookieMock,
@@ -91,7 +91,7 @@ describe('POST /api/check', () => {
     getClientIpMock.mockReset();
     getCommunityRiskHintsForUrlsMock.mockReset();
     resolveUsageSubjectMock.mockReset();
-    canRunCheckMock.mockReset();
+    canRunCheckStrictMock.mockReset();
     usageSnapshotMock.mockReset();
     applySuccessfulCheckMock.mockReset();
     attachAnonymousCookieMock.mockReset();
@@ -108,8 +108,9 @@ describe('POST /api/check', () => {
       anonymous: { key: 'anon_test', premium: false, credits: 0, count: 0 },
       anonymousKey: 'anon_test',
       setAnonymousCookie: false,
+      ipHash: 'iphash_test',
     });
-    canRunCheckMock.mockReturnValue(true);
+    canRunCheckStrictMock.mockResolvedValue({ allowed: true, effectiveCount: 0 });
     usageSnapshotMock.mockReturnValue({
       authenticated: false,
       premium: false,
@@ -173,7 +174,7 @@ describe('POST /api/check', () => {
   });
 
   it('returns 402 before analysis when server-side usage is exhausted', async () => {
-    canRunCheckMock.mockReturnValueOnce(false);
+    canRunCheckStrictMock.mockResolvedValueOnce({ allowed: false, effectiveCount: 2 });
 
     const request = new Request('http://localhost/api/check', {
       method: 'POST',
@@ -588,7 +589,7 @@ describe('POST /api/check', () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({
+    expect(payload).toMatchObject({
       score: 100,
       level: 'Medium',
       reasons: ['Suspicious tone', 'Odd request', 'Bad grammar'],
@@ -602,6 +603,9 @@ describe('POST /api/check', () => {
         freeLimit: 2,
       },
     });
+    expect(Array.isArray(payload.artifacts)).toBe(true);
+    expect(Array.isArray(payload.signalExplanations)).toBe(true);
+    expect(payload.signalExplanations).toHaveLength(payload.reasons.length);
     expect(inspectListingUrlsFromTextMock).toHaveBeenCalledOnce();
     expect(createCompletionMock).toHaveBeenCalledOnce();
   });

@@ -18,6 +18,8 @@ model User {
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?
   subscriptionStatus   String?
+  mergedAnonymousKey   String?
+  signupIpHash         String?
   createdAt            DateTime  @default(now())
   sessions             Session[]
   history              HistoryItem[]
@@ -113,4 +115,15 @@ model NewsletterSignup {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+// Tracks free-check usage per hashed device/IP fingerprint so that clearing
+// cookies or signing up a new account from the same browser cannot reset the
+// free allowance.
+model IpFreeUsage {
+  id        String   @id @default(cuid())
+  ipHash    String   @unique
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

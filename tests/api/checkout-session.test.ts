@@ -99,19 +99,21 @@ describe('POST /api/checkout/session', () => {
     const response = await POST(request as any);
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       url: 'https://checkout.stripe.test/session',
+      currency: 'usd',
     });
     expect(createSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'subscription',
         allow_promotion_codes: true,
         line_items: [{ price: 'price_monthly', quantity: 1 }],
-        metadata: {
+        metadata: expect.objectContaining({
           planType: 'monthly',
           userId: '',
           anonymousKey: 'anon_test',
-        },
+          currency: 'usd',
+        }),
         client_reference_id: 'anon_test',
         success_url:
           'http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',

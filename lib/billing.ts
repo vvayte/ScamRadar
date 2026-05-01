@@ -2,19 +2,101 @@ import type Stripe from "stripe";
 import db from "@/lib/db";
 
 export type PlanType = "single" | "monthly" | "yearly" | "flash";
+export type Currency = "usd" | "eur" | "gbp";
 
+/**
+ * Each plan has a default USD price ID and optional EUR / GBP overrides so
+ * checkout can localize the currency without touching the displayed numbers.
+ * Configure separate Stripe prices in the dashboard with the SAME numeric
+ * amount (e.g. monthly = $4.99 / €4.99 / £4.99) and point each env var at the
+ * matching price ID. If a regional ID is unset we silently fall back to USD.
+ */
 export const PLAN_CONFIG: Record<
   PlanType,
-  { envKey: string; mode: "payment" | "subscription"; credits: number }
+  {
+    envKey: string;
+    eurEnvKey?: string;
+    gbpEnvKey?: string;
+    mode: "payment" | "subscription";
+    credits: number;
+  }
 > = {
-  single: { envKey: "STRIPE_PRICE_ID_SINGLE", mode: "payment", credits: 1 },
-  monthly: { envKey: "STRIPE_PRICE_ID_MONTHLY", mode: "subscription", credits: 0 },
-  yearly: { envKey: "STRIPE_PRICE_ID_YEARLY", mode: "subscription", credits: 0 },
-  flash: { envKey: "STRIPE_PRICE_ID_FLASH", mode: "subscription", credits: 0 },
+  single: {
+    envKey: "STRIPE_PRICE_ID_SINGLE",
+    eurEnvKey: "STRIPE_PRICE_ID_SINGLE_EUR",
+    gbpEnvKey: "STRIPE_PRICE_ID_SINGLE_GBP",
+    mode: "payment",
+    credits: 1,
+  },
+  monthly: {
+    envKey: "STRIPE_PRICE_ID_MONTHLY",
+    eurEnvKey: "STRIPE_PRICE_ID_MONTHLY_EUR",
+    gbpEnvKey: "STRIPE_PRICE_ID_MONTHLY_GBP",
+    mode: "subscription",
+    credits: 0,
+  },
+  yearly: {
+    envKey: "STRIPE_PRICE_ID_YEARLY",
+    eurEnvKey: "STRIPE_PRICE_ID_YEARLY_EUR",
+    gbpEnvKey: "STRIPE_PRICE_ID_YEARLY_GBP",
+    mode: "subscription",
+    credits: 0,
+  },
+  flash: {
+    envKey: "STRIPE_PRICE_ID_FLASH",
+    eurEnvKey: "STRIPE_PRICE_ID_FLASH_EUR",
+    gbpEnvKey: "STRIPE_PRICE_ID_FLASH_GBP",
+    mode: "subscription",
+    credits: 0,
+  },
 };
+
+const EU_COUNTRIES = new Set([
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR",
+  "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK",
+  "SI", "ES", "SE",
+  // Non-EU but EUR-using
+  "IS", "LI", "MC", "ME", "VA", "AD", "SM",
+]);
 
 export function isPlanType(value: unknown): value is PlanType {
   return typeof value === "string" && value in PLAN_CONFIG;
+}
+
+/** Map an ISO country code to the currency we want to bill in. */
+export function currencyForCountry(country: string | null | undefined): Currency {
+  const code = (country || "").toUpperCase();
+  if (code === "GB" || code === "UK") return "gbp";
+  if (EU_COUNTRIES.has(code)) return "eur";
+  return "usd";
+}
+
+/** Read country code from common CDN/proxy headers (Cloudflare, Vercel). */
+export function detectCountry(headers: Headers): string | null {
+  return (
+    headers.get("cf-ipcountry") ||
+    headers.get("x-vercel-ip-country") ||
+    headers.get("x-country-code") ||
+    null
+  );
+}
+
+/**
+ * Resolve the Stripe price ID for the requested plan and currency. Falls back
+ * to the USD price ID (and "usd") if the regional override is not configured.
+ */
+export function resolvePriceForPlan(
+  planType: PlanType,
+  currency: Currency
+): { priceId: string | null; currency: Currency } {
+  const config = PLAN_CONFIG[planType];
+  if (currency === "eur" && config.eurEnvKey && process.env[config.eurEnvKey]) {
+    return { priceId: process.env[config.eurEnvKey] || null, currency: "eur" };
+  }
+  if (currency === "gbp" && config.gbpEnvKey && process.env[config.gbpEnvKey]) {
+    return { priceId: process.env[config.gbpEnvKey] || null, currency: "gbp" };
+  }
+  return { priceId: process.env[config.envKey] || null, currency: "usd" };
 }
 
 function getPlanTypeFromSession(session: Stripe.Checkout.Session): PlanType | null {
@@ -23,7 +105,12 @@ function getPlanTypeFromSession(session: Stripe.Checkout.Session): PlanType | nu
 
   const priceId = (session as any).line_items?.data?.[0]?.price?.id;
   for (const [plan, config] of Object.entries(PLAN_CONFIG) as Array<[PlanType, (typeof PLAN_CONFIG)[PlanType]]>) {
-    if (priceId && process.env[config.envKey] === priceId) return plan;
+    const candidates = [
+      process.env[config.envKey],
+      config.eurEnvKey ? process.env[config.eurEnvKey] : undefined,
+      config.gbpEnvKey ? process.env[config.gbpEnvKey] : undefined,
+    ].filter(Boolean);
+    if (priceId && candidates.includes(priceId)) return plan;
   }
 
   return null;
