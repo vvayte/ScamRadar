@@ -24,6 +24,8 @@ model User {
   sessions             Session[]
   history              HistoryItem[]
   watchlist            WatchlistItem[]
+
+  @@index([signupIpHash])
 }
 
 model Session {

@@ -37,6 +37,20 @@ export async function POST(req: NextRequest) {
       await applySubscriptionStatus(event.data.object as any);
     }
 
+    // Re-sync subscription on payment failure so we can mark the user past_due
+    // immediately rather than waiting for Stripe to re-emit subscription.updated.
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as { subscription?: string | null };
+      if (invoice.subscription) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+          await applySubscriptionStatus(sub);
+        } catch (err) {
+          console.error("Failed to sync subscription on payment_failed", err);
+        }
+      }
+    }
+
     await db.stripeEvent.create({ data: { id: event.id, type: event.type } });
     return NextResponse.json({ ok: true });
   } catch (error) {

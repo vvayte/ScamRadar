@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RadarSweep } from "@/components/Icons";
+import { LanguageToggle, useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@scamradar.app";
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,13 +28,13 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error || "Could not log in.");
+        setError(data?.error || t("login.failed"));
         return;
       }
       router.push("/dashboard/checker");
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("login.failed"));
     } finally {
       setLoading(false);
     }
@@ -39,6 +42,9 @@ export default function LoginPage() {
 
   return (
     <div className="site-shell flex min-h-screen flex-col items-center justify-center px-5 py-10 text-white">
+      <div className="absolute right-5 top-5 md:right-8 md:top-8">
+        <LanguageToggle />
+      </div>
       <Link href="/" className="mb-10 flex items-center gap-2.5 text-white">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-300/30 bg-cyan-500/15">
           <RadarSweep size={22} />
@@ -47,13 +53,13 @@ export default function LoginPage() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="mt-1 text-sm text-white/55">Sign in to access your dashboard.</p>
+        <h1 className="text-2xl font-bold">{t("login.title")}</h1>
+        <p className="mt-1 text-sm text-white/55">{t("login.subtitle")}</p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <div>
             <label htmlFor="email" className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
-              Email
+              {t("login.email")}
             </label>
             <input
               id="email"
@@ -67,9 +73,17 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+                {t("login.password")}
+              </label>
+              <a
+                href={`mailto:${supportEmail}?subject=Password%20reset%20request`}
+                className="text-xs text-white/55 hover:text-white"
+              >
+                {t("login.forgot")}
+              </a>
+            </div>
             <input
               id="password"
               type="password"
@@ -77,7 +91,6 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
               className="input-field mt-2 w-full rounded-xl border border-white/12 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-cyan-400/50"
             />
           </div>
@@ -93,14 +106,14 @@ export default function LoginPage() {
             disabled={loading}
             className="press w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#04080d] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-white/55">
-          No account?{" "}
+          {t("login.no_account")}{" "}
           <Link href="/signup" className="font-semibold text-white hover:underline">
-            Sign up
+            {t("login.create")}
           </Link>
         </div>
       </div>

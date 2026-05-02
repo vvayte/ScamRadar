@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { RadarSweep } from "@/components/Icons";
+import { LanguageToggle, useT } from "@/lib/i18n";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -27,11 +29,11 @@ export default function SignupPage() {
 
     if (!verificationPending) {
       if (password.length < 8) {
-        setError("Password must be at least 8 characters.");
+        setError(t("signup.failed"));
         return;
       }
       if (password !== confirmPassword) {
-        setError("Passwords do not match.");
+        setError(t("signup.mismatch"));
         return;
       }
     }
@@ -50,7 +52,7 @@ export default function SignupPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error || "Could not create account.");
+        setError(data?.error || t("signup.failed"));
         if (data?.requiresVerification) setVerificationPending(true);
         return;
       }
@@ -68,7 +70,7 @@ export default function SignupPage() {
       router.push("/dashboard/checker");
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("signup.failed"));
     } finally {
       setLoading(false);
     }
@@ -76,6 +78,9 @@ export default function SignupPage() {
 
   return (
     <div className="site-shell flex min-h-screen flex-col items-center justify-center px-5 py-10 text-white">
+      <div className="absolute right-5 top-5 md:right-8 md:top-8">
+        <LanguageToggle />
+      </div>
       <Link href="/" className="mb-10 flex items-center gap-2.5 text-white">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-300/30 bg-cyan-500/15">
           <RadarSweep size={22} />
@@ -84,15 +89,13 @@ export default function SignupPage() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold">Create your account</h1>
-        <p className="mt-1 text-sm text-white/55">
-          Free to start. Limited free checks included.
-        </p>
+        <h1 className="text-2xl font-bold">{t("signup.title")}</h1>
+        <p className="mt-1 text-sm text-white/55">{t("signup.subtitle")}</p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
           <div>
             <label htmlFor="email" className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
-              Email
+              {t("signup.email")}
             </label>
             <input
               id="email"
@@ -112,7 +115,7 @@ export default function SignupPage() {
           </div>
           <div>
             <label htmlFor="password" className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
-              Password
+              {t("signup.password")}
             </label>
             <input
               id="password"
@@ -122,13 +125,12 @@ export default function SignupPage() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
               className="input-field mt-2 w-full rounded-xl border border-white/12 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-cyan-400/50"
             />
           </div>
           <div>
             <label htmlFor="confirmPassword" className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
-              Confirm password
+              {t("signup.confirm")}
             </label>
             <input
               id="confirmPassword"
@@ -137,11 +139,10 @@ export default function SignupPage() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter your password"
               className={`input-field mt-2 w-full rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35 focus:border-cyan-400/50 ${showMismatch ? "border-rose-400/40" : "border-white/12"}`}
             />
             {showMismatch ? (
-              <div className="mt-2 text-xs text-rose-300">Passwords do not match.</div>
+              <div className="mt-2 text-xs text-rose-300">{t("signup.mismatch")}</div>
             ) : null}
           </div>
 
@@ -180,24 +181,20 @@ export default function SignupPage() {
             disabled={loading || (!verificationPending && !passwordsValid)}
             className="press w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#04080d] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading
-              ? "Please wait…"
-              : verificationPending
-                ? "Verify & create account"
-                : "Create account"}
+            {loading ? t("signup.submitting") : t("signup.submit")}
           </button>
         </form>
 
         <div className="mt-4 text-center text-xs text-white/45">
-          By signing up you agree to our{" "}
-          <Link href="/terms" className="text-white/65 hover:text-white">Terms</Link> and{" "}
+          {t("signup.terms")}{" "}
+          <Link href="/terms" className="text-white/65 hover:text-white">Terms</Link> {t("signup.and")}{" "}
           <Link href="/privacy" className="text-white/65 hover:text-white">Privacy</Link>.
         </div>
 
         <div className="mt-6 text-center text-sm text-white/55">
-          Already have an account?{" "}
+          {t("signup.have_account")}{" "}
           <Link href="/login" className="font-semibold text-white hover:underline">
-            Sign in
+            {t("signup.signin")}
           </Link>
         </div>
       </div>

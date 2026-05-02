@@ -4,16 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { RadarSweep } from "@/components/Icons";
+import { LanguageToggle, useT } from "@/lib/i18n";
 
-type NavLink = { href: string; label: string };
+type NavKey = "side.dashboard" | "side.checker" | "side.history" | "side.watchlist" | "side.billing" | "side.settings";
+type NavLink = { href: string; key: NavKey };
 
 const NAV: NavLink[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/checker", label: "Checker" },
-  { href: "/dashboard/history", label: "History" },
-  { href: "/dashboard/watchlist", label: "Watchlist" },
-  { href: "/dashboard/billing", label: "Billing" },
-  { href: "/dashboard/settings", label: "Settings" },
+  { href: "/dashboard", key: "side.dashboard" },
+  { href: "/dashboard/checker", key: "side.checker" },
+  { href: "/dashboard/history", key: "side.history" },
+  { href: "/dashboard/watchlist", key: "side.watchlist" },
+  { href: "/dashboard/billing", key: "side.billing" },
+  { href: "/dashboard/settings", key: "side.settings" },
 ];
 
 type Usage = {
@@ -32,6 +34,7 @@ export default function DashboardSidebar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { t } = useT();
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(href);
@@ -87,28 +90,31 @@ export default function DashboardSidebar({
                     : "text-white/60 hover:bg-white/[0.04] hover:text-white"
                 }`}
               >
-                {link.label}
+                {t(link.key)}
               </Link>
             );
           })}
         </nav>
 
         <div className="border-t border-white/8 px-3 py-4">
+          <div className="mb-3 flex justify-center">
+            <LanguageToggle />
+          </div>
           <div className="rounded-lg bg-white/[0.03] px-3 py-3">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Usage</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">{t("side.usage")}</div>
             <div className="mt-1 text-sm font-semibold text-white">
               {usage.premium
-                ? "Shield active"
+                ? t("side.unlimited")
                 : usage.credits > 0
-                  ? `${usage.credits} paid check${usage.credits === 1 ? "" : "s"}`
-                  : `${remainingFree} / ${usage.freeLimit} free`}
+                  ? `${usage.credits} ${t("side.checks_left")}`
+                  : `${remainingFree} / ${usage.freeLimit}`}
             </div>
             {!usage.premium && (
               <Link
                 href="/dashboard/billing"
                 className="mt-3 block rounded-md bg-white px-3 py-2 text-center text-xs font-semibold text-[#04080d] hover:bg-white/90"
               >
-                Upgrade
+                {t("side.upgrade")}
               </Link>
             )}
           </div>
@@ -122,7 +128,7 @@ export default function DashboardSidebar({
               onClick={onLogout}
               className="rounded-md border border-white/12 px-2 py-1 text-white/65 hover:text-white"
             >
-              Sign out
+              {t("side.signout")}
             </button>
           </div>
         </div>

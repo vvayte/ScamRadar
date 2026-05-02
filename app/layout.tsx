@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Fraunces, JetBrains_Mono, Space_Grotesk, Sora } from "next/font/google";
 import Analytics from "@/components/Analytics";
+import { I18nProvider } from "@/lib/i18n";
 
 const bodyFont = Space_Grotesk({ subsets: ["latin"], variable: "--font-body", display: "swap" });
 const displayFont = Sora({ subsets: ["latin"], variable: "--font-display", display: "swap" });
@@ -108,7 +109,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Script defer data-domain={plausibleDomain} src={plausibleScriptSrc} strategy="afterInteractive" />
         ) : null}
 
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

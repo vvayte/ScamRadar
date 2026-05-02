@@ -157,6 +157,16 @@ a { color: inherit; }
   font-weight: 600;
 }
 
+/* Cyrillic looks heavy in serif display fonts — switch to the sans display
+   for Russian, with tighter tracking to match the visual weight of the
+   English serif setting. */
+html[lang="ru"] .font-serif-display {
+  font-family: var(--font-display), "Inter", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  font-feature-settings: normal;
+}
+
 .section-y {
   padding-top: var(--section-y);
   padding-bottom: var(--section-y);
