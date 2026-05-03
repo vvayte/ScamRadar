@@ -10,11 +10,9 @@ const displayFont = Sora({ subsets: ["latin"], variable: "--font-display", displ
 const monoFont = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 const serifFont = Fraunces({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
 
-// Hardcoded absolute production URL so social link previews always resolve
-// the og:image correctly, regardless of any NEXT_PUBLIC_APP_URL drift in
-// preview deployments. Override only via env if you really need to.
+// Hardcoded absolute production URL so social link previews and canonicals
+// always resolve correctly, regardless of any NEXT_PUBLIC_APP_URL drift.
 const PROD_URL = "https://www.scamradar.pro";
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || PROD_URL;
 const OG_IMAGE = `${PROD_URL}/og-image.png`;
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "";
@@ -26,7 +24,7 @@ const ogDescription =
   "Check suspicious messages, links, and screenshots before you click or pay. Paste it. Score it. Decide before you pay.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(PROD_URL),
   title: {
     default: ogTitle,
     template: "%s | ScamRadar",
