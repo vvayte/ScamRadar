@@ -10,25 +10,24 @@ const displayFont = Sora({ subsets: ["latin"], variable: "--font-display", displ
 const monoFont = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 const serifFont = Fraunces({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
 
-const fallbackSiteUrl = "https://www.scamradar.pro";
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || fallbackSiteUrl;
+// Hardcoded absolute production URL so social link previews always resolve
+// the og:image correctly, regardless of any NEXT_PUBLIC_APP_URL drift in
+// preview deployments. Override only via env if you really need to.
+const PROD_URL = "https://www.scamradar.pro";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || PROD_URL;
+const OG_IMAGE = `${PROD_URL}/og-image.png`;
+
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "";
 const plausibleScriptSrc =
   process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC || "https://plausible.io/js/script.js";
 
-const ogTitle = "ScamRadar — AI scam checker for messages, links & screenshots";
+const ogTitle = "ScamRadar - AI scam checker for messages, links & screenshots";
 const ogDescription =
-  "Check suspicious messages, links, and screenshots before you click or pay. Paste it. Score it. Decide.";
+  "Check suspicious messages, links, and screenshots before you click or pay. Paste it. Score it. Decide before you pay.";
 
 export const metadata: Metadata = {
-  metadataBase: (() => {
-    try {
-      return new URL(siteUrl);
-    } catch {
-      return new URL(fallbackSiteUrl);
-    }
-  })(),
+  metadataBase: new URL(siteUrl),
   title: {
     default: ogTitle,
     template: "%s | ScamRadar",
@@ -57,27 +56,27 @@ export const metadata: Metadata = {
     siteName: "ScamRadar",
     title: ogTitle,
     description: ogDescription,
-    url: "/",
+    url: PROD_URL,
     locale: "en_US",
     images: [
       {
-        url: "/og-image.png",
-        secureUrl: "/og-image.png",
+        url: OG_IMAGE,
+        secureUrl: OG_IMAGE,
         type: "image/png",
         width: 1200,
         height: 630,
-        alt: "ScamRadar — AI scam checker. Risk score 94/100, HIGH RISK.",
+        alt: "ScamRadar - AI scam checker. Risk score 94/100, HIGH RISK.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ScamRadar — AI scam checker",
+    title: "ScamRadar - AI scam checker",
     description: ogDescription,
     images: [
       {
-        url: "/og-image.png",
-        alt: "ScamRadar — AI scam checker. Risk score 94/100, HIGH RISK.",
+        url: OG_IMAGE,
+        alt: "ScamRadar - AI scam checker. Risk score 94/100, HIGH RISK.",
       },
     ],
   },
@@ -106,7 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             name: "ScamRadar",
             applicationCategory: "SecurityApplication",
             operatingSystem: "Web",
-            url: siteUrl,
+            url: PROD_URL,
             description:
               "AI-assisted scam checker for suspicious messages, links, and screenshots.",
             offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
