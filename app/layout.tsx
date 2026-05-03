@@ -14,6 +14,7 @@ const serifFont = Fraunces({ subsets: ["latin"], variable: "--font-serif", displ
 // always resolve correctly, regardless of any NEXT_PUBLIC_APP_URL drift.
 const PROD_URL = "https://www.scamradar.pro";
 const OG_IMAGE = `${PROD_URL}/og-image.png`;
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "";
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "";
 const plausibleScriptSrc =
@@ -77,6 +78,9 @@ export const metadata: Metadata = {
       },
     ],
   },
+  verification: googleSiteVerification
+    ? { google: googleSiteVerification }
+    : undefined,
   robots: {
     index: true,
     follow: true,

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const fallbackUrl = "https://scamradar.app";
+const fallbackUrl = "https://www.scamradar.pro";
 
 function getBaseUrl(): string {
   const raw = process.env.NEXT_PUBLIC_APP_URL || fallbackUrl;

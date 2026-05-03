@@ -2,6 +2,23 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Force apex (scamradar.pro) -> www.scamradar.pro so the canonical URL is
+  // consistent regardless of how a user typed the address. Belt-and-suspenders
+  // on top of the Vercel domain UI redirect.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "scamradar.pro" }],
+        destination: "https://www.scamradar.pro/:path*",
+        permanent: true,
+      },
+      // Redirect any leftover /ru/* links from the bilingual era back to root.
+      { source: "/ru", destination: "/", permanent: true },
+      { source: "/ru/:path*", destination: "/:path*", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {
