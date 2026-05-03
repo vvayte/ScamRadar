@@ -10,12 +10,16 @@ const displayFont = Sora({ subsets: ["latin"], variable: "--font-display", displ
 const monoFont = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 const serifFont = Fraunces({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
 
-const fallbackSiteUrl = "https://scamradar.app";
+const fallbackSiteUrl = "https://www.scamradar.pro";
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || fallbackSiteUrl;
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "";
 const plausibleScriptSrc =
   process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC || "https://plausible.io/js/script.js";
+
+const ogTitle = "ScamRadar — AI scam checker for messages, links & screenshots";
+const ogDescription =
+  "Check suspicious messages, links, and screenshots before you click or pay. Paste it. Score it. Decide.";
 
 export const metadata: Metadata = {
   metadataBase: (() => {
@@ -25,14 +29,18 @@ export const metadata: Metadata = {
       return new URL(fallbackSiteUrl);
     }
   })(),
-  title: "ScamRadar | AI second opinion on suspicious messages",
-  description:
-    "Paste a message, link, or screenshot. ScamRadar highlights warning signs and gives you a clear next step before you click or pay.",
+  title: {
+    default: ogTitle,
+    template: "%s | ScamRadar",
+  },
+  description: ogDescription,
   keywords: [
     "scam checker",
     "phishing detector",
     "marketplace scam",
     "AI fraud detection",
+    "message safety",
+    "link checker",
   ],
   alternates: { canonical: "/" },
   icons: {
@@ -45,18 +53,33 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "ScamRadar | AI second opinion on suspicious messages",
-    description: "Check suspicious messages, links, and screenshots before you click or pay.",
-    url: "/",
-    siteName: "ScamRadar",
     type: "website",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "ScamRadar AI scam checker" }],
+    siteName: "ScamRadar",
+    title: ogTitle,
+    description: ogDescription,
+    url: "/",
+    locale: "en_US",
+    images: [
+      {
+        url: "/og-image.png",
+        secureUrl: "/og-image.png",
+        type: "image/png",
+        width: 1200,
+        height: 630,
+        alt: "ScamRadar — AI scam checker. Risk score 94/100, HIGH RISK.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ScamRadar | AI scam checker",
-    description: "Check suspicious messages, links, and screenshots before you click or pay.",
-    images: ["/og.png"],
+    title: "ScamRadar — AI scam checker",
+    description: ogDescription,
+    images: [
+      {
+        url: "/og-image.png",
+        alt: "ScamRadar — AI scam checker. Risk score 94/100, HIGH RISK.",
+      },
+    ],
   },
   robots: {
     index: true,
@@ -83,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             name: "ScamRadar",
             applicationCategory: "SecurityApplication",
             operatingSystem: "Web",
+            url: siteUrl,
             description:
               "AI-assisted scam checker for suspicious messages, links, and screenshots.",
             offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },

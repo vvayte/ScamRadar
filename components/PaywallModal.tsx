@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BoltIcon, CheckIcon, CloseIcon, ShieldIcon } from "./Icons";
 
-type PlanType = "single" | "monthly" | "yearly";
+type PlanType = "lifetime" | "monthly" | "yearly";
 
 interface PaywallModalProps {
   show: boolean;
@@ -96,20 +96,6 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
         <div className="relative grid gap-4 p-6 md:grid-cols-3 md:p-8">
           <button
             type="button"
-            onClick={() => handlePurchase("single")}
-            disabled={pending !== null}
-            className="hover-lift rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-left transition hover:border-cyan-300/35 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-white/45">One-off</div>
-            <div className="mt-4 text-4xl font-black text-cyan-100">$0.99</div>
-            <div className="mt-2 text-sm text-white/70">One urgent answer, no commitment.</div>
-            <div className="mt-5 rounded-2xl bg-cyan-500/85 px-4 py-3 text-center font-bold text-white">
-              {pending === "single" ? "Redirecting..." : "Unlock 1 Check"}
-            </div>
-          </button>
-
-          <button
-            type="button"
             onClick={() => handlePurchase("monthly")}
             disabled={pending !== null}
             className="hover-lift relative rounded-3xl border border-cyan-300/45 bg-cyan-500/12 p-5 text-left transition hover:border-cyan-200/60 hover:bg-cyan-500/18 disabled:cursor-not-allowed disabled:opacity-70 glow-accent"
@@ -147,6 +133,26 @@ export default function PaywallModal({ show, onClose }: PaywallModalProps) {
             </div>
             <div className="mt-5 rounded-2xl bg-cyan-500/85 px-4 py-3 text-center font-bold text-white">
               {pending === "yearly" ? "Redirecting..." : "Subscribe yearly"}
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePurchase("lifetime")}
+            disabled={pending !== null}
+            className="hover-lift relative rounded-3xl border border-emerald-300/35 bg-emerald-500/[0.08] p-5 text-left transition hover:border-emerald-200/55 hover:bg-emerald-500/[0.14] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <div className="absolute right-4 top-4 rounded-full bg-emerald-300 px-2 py-0.5 text-[10px] font-black text-[#053027]">
+              PAY ONCE
+            </div>
+            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-100">Lifetime</div>
+            <div className="mt-4 flex items-baseline gap-1">
+              <span className="text-4xl font-black text-white">$59.99</span>
+              <span className="text-sm font-semibold text-white/55">one-time</span>
+            </div>
+            <div className="mt-2 text-sm text-white/75">Unlimited checks forever. Never auto-renews.</div>
+            <div className="mt-5 rounded-2xl bg-emerald-400 px-4 py-3 text-center font-bold text-[#04241d]">
+              {pending === "lifetime" ? "Redirecting..." : "Get Lifetime"}
             </div>
           </button>
         </div>

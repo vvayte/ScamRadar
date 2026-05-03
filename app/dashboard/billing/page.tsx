@@ -20,7 +20,7 @@ export default async function BillingPage() {
       <div className="text-xs uppercase tracking-[0.22em] text-white/45">Billing</div>
       <h1 className="mt-2 text-2xl font-bold text-white md:text-3xl">Plan & checkout</h1>
       <p className="mt-2 text-sm text-white/55">
-        Upgrade for unlimited checks, or buy a single check when you only need one urgent answer.
+        Upgrade for unlimited checks. Pick monthly, yearly, or pay once with Lifetime.
       </p>
       <div className="mt-8">
         <BillingPanel

@@ -1,15 +1,17 @@
 import type Stripe from "stripe";
 import db from "@/lib/db";
 
-export type PlanType = "single" | "monthly" | "yearly" | "flash";
+export type PlanType = "lifetime" | "monthly" | "yearly" | "flash";
 export type Currency = "usd" | "eur" | "gbp";
 
 /**
  * Each plan has a default USD price ID and optional EUR / GBP overrides so
- * checkout can localize the currency without touching the displayed numbers.
- * Configure separate Stripe prices in the dashboard with the SAME numeric
- * amount (e.g. monthly = $4.99 / €4.99 / £4.99) and point each env var at the
- * matching price ID. If a regional ID is unset we silently fall back to USD.
+ * checkout can localize the currency. Configure separate Stripe prices in the
+ * dashboard with the matching numeric amounts and point each env var at the
+ * right price ID. If a regional ID is unset we silently fall back to USD.
+ *
+ * `lifetime` is a one-time payment that grants permanent Shield access — same
+ * benefits as a subscription, but never auto-renews.
  */
 export const PLAN_CONFIG: Record<
   PlanType,
@@ -19,14 +21,16 @@ export const PLAN_CONFIG: Record<
     gbpEnvKey?: string;
     mode: "payment" | "subscription";
     credits: number;
+    grantsLifetimePremium?: boolean;
   }
 > = {
-  single: {
-    envKey: "STRIPE_PRICE_ID_SINGLE",
-    eurEnvKey: "STRIPE_PRICE_ID_SINGLE_EUR",
-    gbpEnvKey: "STRIPE_PRICE_ID_SINGLE_GBP",
+  lifetime: {
+    envKey: "STRIPE_PRICE_ID_LIFETIME",
+    eurEnvKey: "STRIPE_PRICE_ID_LIFETIME_EUR",
+    gbpEnvKey: "STRIPE_PRICE_ID_LIFETIME_GBP",
     mode: "payment",
-    credits: 1,
+    credits: 0,
+    grantsLifetimePremium: true,
   },
   monthly: {
     envKey: "STRIPE_PRICE_ID_MONTHLY",
@@ -66,7 +70,7 @@ export function isPlanType(value: unknown): value is PlanType {
 /** Map an ISO country code to the currency we want to bill in. */
 export function currencyForCountry(country: string | null | undefined): Currency {
   const code = (country || "").toUpperCase();
-  if (code === "GB" || code === "UK") return "gbp";
+  if (code === "GB" || code === "UK" || code === "JE" || code === "GG" || code === "IM") return "gbp";
   if (EU_COUNTRIES.has(code)) return "eur";
   return "usd";
 }
@@ -142,6 +146,8 @@ export async function applyCheckoutSession(session: Stripe.Checkout.Session) {
   const refs = getCheckoutRefs(session);
   const priceId = (session as any).line_items?.data?.[0]?.price?.id || process.env[config.envKey] || "";
   const isSubscription = config.mode === "subscription";
+  const grantsLifetime = !!config.grantsLifetimePremium;
+  const grantsPremium = isSubscription || grantsLifetime;
 
   return db.$transaction(async (tx) => {
     const existing = await tx.stripeCheckoutSession.findUnique({ where: { id: session.id } });
@@ -175,15 +181,25 @@ export async function applyCheckoutSession(session: Stripe.Checkout.Session) {
       },
     });
 
+    const subscriptionStatusValue = isSubscription
+      ? "active"
+      : grantsLifetime
+        ? "lifetime"
+        : null;
+
     if (refs.userId) {
       await tx.user.update({
         where: { id: refs.userId },
-        data: isSubscription
+        data: grantsPremium
           ? {
               premium: true,
               stripeCustomerId: refs.customerId || undefined,
-              stripeSubscriptionId: refs.subscriptionId || undefined,
-              subscriptionStatus: "active",
+              ...(isSubscription
+                ? { stripeSubscriptionId: refs.subscriptionId || undefined }
+                : {}),
+              ...(subscriptionStatusValue
+                ? { subscriptionStatus: subscriptionStatusValue }
+                : {}),
             }
           : {
               credits: { increment: config.credits },
@@ -195,18 +211,22 @@ export async function applyCheckoutSession(session: Stripe.Checkout.Session) {
         where: { key: refs.anonymousKey },
         create: {
           key: refs.anonymousKey,
-          premium: isSubscription,
-          credits: isSubscription ? 0 : config.credits,
+          premium: grantsPremium,
+          credits: grantsPremium ? 0 : config.credits,
           stripeCustomerId: refs.customerId || undefined,
           stripeSubscriptionId: refs.subscriptionId || undefined,
-          subscriptionStatus: isSubscription ? "active" : undefined,
+          subscriptionStatus: subscriptionStatusValue || undefined,
         },
-        update: isSubscription
+        update: grantsPremium
           ? {
               premium: true,
               stripeCustomerId: refs.customerId || undefined,
-              stripeSubscriptionId: refs.subscriptionId || undefined,
-              subscriptionStatus: "active",
+              ...(isSubscription
+                ? { stripeSubscriptionId: refs.subscriptionId || undefined }
+                : {}),
+              ...(subscriptionStatusValue
+                ? { subscriptionStatus: subscriptionStatusValue }
+                : {}),
             }
           : {
               credits: { increment: config.credits },

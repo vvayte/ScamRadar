@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import stripe from '@/lib/stripe';
-import { applyCheckoutSession } from '@/lib/billing';
+import { applyCheckoutSession, PLAN_CONFIG } from '@/lib/billing';
 import { ANON_USAGE_COOKIE } from '@/lib/usage';
 
 /**
@@ -16,7 +16,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Stripe secret key is not configured.' }, { status: 503 });
   }
   try {
-    // Retrieve the session and line items to determine what was purchased
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['line_items'] as any,
     });
@@ -31,8 +30,12 @@ export async function GET(req: NextRequest) {
 
     const applied = await applyCheckoutSession(session);
 
-    const premium = session.mode === 'subscription';
-    const credits = premium ? 0 : applied.planType === 'single' ? 1 : 0;
+    const planType = applied.planType;
+    const config = planType ? PLAN_CONFIG[planType] : undefined;
+    const grantsLifetime = !!config?.grantsLifetimePremium;
+    const premium = session.mode === 'subscription' || grantsLifetime;
+    // Lifetime and subscriptions don't add per-check credits — they grant premium.
+    const credits = premium ? 0 : config?.credits ?? 0;
     const response = NextResponse.json({ premium, credits, applied });
     if (applied.anonymousKey) {
       response.cookies.set(ANON_USAGE_COOKIE, applied.anonymousKey, {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type PlanId = "single" | "monthly" | "yearly";
+type PlanId = "lifetime" | "monthly" | "yearly";
 
 type Plan = {
   id: PlanId;
@@ -12,17 +12,10 @@ type Plan = {
   description: string;
   features: string[];
   emphasis?: boolean;
+  ctaLabel: string;
 };
 
 const PLANS: Plan[] = [
-  {
-    id: "single",
-    name: "Single check",
-    amount: 0.99,
-    cadence: "one-off",
-    description: "One urgent answer when you need it.",
-    features: ["1 full scam check", "Full reasons & next step", "No subscription"],
-  },
   {
     id: "monthly",
     name: "Shield Monthly",
@@ -31,6 +24,7 @@ const PLANS: Plan[] = [
     description: "Unlimited checks, billed monthly.",
     features: ["Unlimited full checks", "Forensic report unlocked", "History & watchlist"],
     emphasis: true,
+    ctaLabel: "Subscribe",
   },
   {
     id: "yearly",
@@ -39,6 +33,16 @@ const PLANS: Plan[] = [
     cadence: "/year",
     description: "Unlimited checks, billed annually.",
     features: ["Everything in Monthly", "Save vs monthly", "Priority support"],
+    ctaLabel: "Subscribe",
+  },
+  {
+    id: "lifetime",
+    name: "Shield Lifetime",
+    amount: 59.99,
+    cadence: "one-time",
+    description: "Pay once. Unlimited checks forever — no renewals.",
+    features: ["Lifetime access", "Unlimited full checks", "All forensic features"],
+    ctaLabel: "Get Lifetime",
   },
 ];
 
@@ -49,13 +53,22 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 /**
- * The displayed amount is intentionally NOT changed across currencies.
- * If $4.99 is the USD price, the EUR Stripe price ID is also priced at €4.99
- * and the GBP one at £4.99. We only swap the symbol.
+ * The displayed amount stays the same number across currencies — Stripe has a
+ * matching price ID per region and we only swap the symbol. Lifetime UK is the
+ * one exception priced at £49.99.
  */
-function formatPrice(currency: string, amount: number): string {
+function formatPrice(currency: string, amount: number, planId: PlanId): string {
   const symbol = CURRENCY_SYMBOLS[currency] || "$";
-  return `${symbol}${amount.toFixed(2)}`;
+  // GBP psychological pricing differs slightly from USD/EUR.
+  const value =
+    currency === "gbp"
+      ? planId === "monthly"
+        ? 4.49
+        : planId === "yearly"
+          ? 24.99
+          : 49.99
+      : amount;
+  return `${symbol}${value.toFixed(2)}`;
 }
 
 export default function BillingPanel({
@@ -97,20 +110,29 @@ export default function BillingPanel({
   };
 
   const remainingFree = Math.max(0, status.freeLimit - status.count);
+  const isLifetime = status.subscriptionStatus === "lifetime";
 
   return (
     <div className="space-y-8">
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
         <div className="text-xs uppercase tracking-[0.18em] text-white/55">Current plan</div>
         <div className="mt-2 text-xl font-bold text-white">
-          {status.premium ? "Shield · active" : status.credits > 0 ? "Pay-as-you-go" : "Free"}
+          {isLifetime
+            ? "Shield Lifetime · active"
+            : status.premium
+              ? "Shield · active"
+              : status.credits > 0
+                ? "Pay-as-you-go"
+                : "Free"}
         </div>
         <div className="mt-1 text-sm text-white/60">
-          {status.premium
-            ? `Subscription status: ${status.subscriptionStatus || "active"}`
-            : status.credits > 0
-              ? `${status.credits} paid check${status.credits === 1 ? "" : "s"} remaining`
-              : `${remainingFree} of ${status.freeLimit} free checks remaining on this account`}
+          {isLifetime
+            ? "Unlimited checks. Lifetime access — no renewals."
+            : status.premium
+              ? `Subscription status: ${status.subscriptionStatus || "active"}`
+              : status.credits > 0
+                ? `${status.credits} paid check${status.credits === 1 ? "" : "s"} remaining`
+                : `${remainingFree} of ${status.freeLimit} free checks remaining on this account`}
         </div>
       </div>
 
@@ -129,7 +151,7 @@ export default function BillingPanel({
             <div className="text-xs uppercase tracking-[0.18em] text-white/55">{plan.name}</div>
             <div className="mt-3 flex items-baseline gap-1">
               <span className="text-3xl font-black text-white">
-                {formatPrice(detectedCurrency, plan.amount)}
+                {formatPrice(detectedCurrency, plan.amount, plan.id)}
               </span>
               <span className="text-sm font-semibold text-white/45">{plan.cadence}</span>
             </div>
@@ -152,18 +174,14 @@ export default function BillingPanel({
                   : "border border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]"
               }`}
             >
-              {pending === plan.id
-                ? "Redirecting…"
-                : plan.id === "single"
-                  ? "Buy 1 check"
-                  : "Subscribe"}
+              {pending === plan.id ? "Redirecting…" : plan.ctaLabel}
             </button>
           </div>
         ))}
       </div>
 
       <p className="text-xs text-white/45">
-        Pricing is shown in your local currency where supported (USD / EUR / GBP). The numeric amount is the same across regions. Stripe handles checkout securely.
+        Pricing is shown in your local currency where supported (USD / EUR / GBP). Stripe handles checkout securely.
       </p>
     </div>
   );
