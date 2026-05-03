@@ -78,7 +78,7 @@ export default function FlashOffer({ premium }: { premium: boolean }) {
   if (!show || dismissed) return null;
 
   return (
-    <div className="fade-in-up fixed bottom-4 right-4 z-40 w-[calc(100%-2rem)] max-w-sm overflow-hidden rounded-2xl border border-amber-300/40 bg-gradient-to-br from-[#1a1206] via-[#0a1a24] to-[#04141d] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.6)]">
+    <div className="fade-in-up fixed inset-x-4 bottom-4 z-40 w-auto max-w-none overflow-hidden rounded-2xl border border-amber-300/40 bg-gradient-to-br from-[#1a1206] via-[#0a1a24] to-[#04141d] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.6)] sm:left-auto sm:w-[calc(100%-2rem)] sm:max-w-sm">
       <div className="absolute right-2 top-2 z-10">
         <button
           onClick={() => setDismissed(true)}
@@ -97,9 +97,9 @@ export default function FlashOffer({ premium }: { premium: boolean }) {
         <p className="mt-1 text-sm text-white/70">
           One-time intro on Shield Monthly. After this month, renews at $4.99/mo. Cancel anytime.
         </p>
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-3 py-2">
-          <span className="text-xs uppercase tracking-wider text-white/55">Expires in</span>
-          <span className="flash-timer-pulse mono-readout text-xl font-black text-amber-200">{format(remaining)}</span>
+        <div className="mt-3 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
+          <span className="min-w-0 text-xs uppercase tracking-wider text-white/55">Expires in</span>
+          <span className="flash-timer-pulse mono-readout shrink-0 text-xl font-black text-amber-200">{format(remaining)}</span>
         </div>
         <button
           onClick={handleClaim}

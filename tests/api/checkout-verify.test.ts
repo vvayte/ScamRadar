@@ -18,6 +18,10 @@ vi.mock('@/lib/stripe', () => ({
 
 vi.mock('@/lib/billing', () => ({
   applyCheckoutSession: applyCheckoutSessionMock,
+  PLAN_CONFIG: {
+    monthly: { credits: 0 },
+    single: { credits: 1 },
+  },
 }));
 
 import { GET } from '@/app/api/checkout/verify/route';

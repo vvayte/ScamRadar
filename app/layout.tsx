@@ -16,13 +16,12 @@ const serifFont = Fraunces({ subsets: ["latin"], variable: "--font-serif", displ
 const PROD_URL = "https://www.scamradar.pro";
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || PROD_URL;
 const OG_IMAGE = `${PROD_URL}/og-image.png`;
-
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "";
 const plausibleScriptSrc =
   process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC || "https://plausible.io/js/script.js";
 
-const ogTitle = "ScamRadar - AI scam checker for messages, links & screenshots";
+const ogTitle = "ScamRadar - AI scam checker for links & screenshots";
 const ogDescription =
   "Check suspicious messages, links, and screenshots before you click or pay. Paste it. Score it. Decide before you pay.";
 
